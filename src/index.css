@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root[data-theme="dark"] {
+  --bg-base: #0a0f1a;
+  --bg-panel: #0f1829;
+  --bg-canvas: #070d18;
+  --bg-elevated: #172033;
+  --border: rgba(255, 255, 255, 0.07);
+  --text-primary: #f1f5f9;
+  --text-secondary: #64748b;
+  --text-muted: #334155;
+  --accent-default: #334155;
+  --accent-active: #f59e0b;
+  --accent-accept: #10b981;
+  --accent-reject: #ef4444;
+  --accent-candidate: #3b82f6;
+  --dot-color: rgba(255, 255, 255, 0.04);
+}
+
+:root[data-theme="light"] {
+  --bg-base: #f0f4f8;
+  --bg-panel: #ffffff;
+  --bg-canvas: #e8eef5;
+  --bg-elevated: #f8fafc;
+  --border: rgba(0, 0, 0, 0.09);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --accent-default: #94a3b8;
+  --accent-active: #d97706;
+  --accent-accept: #059669;
+  --accent-reject: #dc2626;
+  --accent-candidate: #2563eb;
+  --dot-color: rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme="crimson"] {
+  --bg-base: #0d0508;
+  --bg-panel: #130a0c;
+  --bg-canvas: #0a0306;
+  --bg-elevated: #1f0e12;
+  --border: rgba(220, 38, 38, 0.15);
+  --text-primary: #fef2f2;
+  --text-secondary: #9f1239;
+  --text-muted: #450a0a;
+  --accent-default: #7f1d1d;
+  --accent-active: #f97316;
+  --accent-accept: #dc2626;
+  --accent-reject: #6b21a8;
+  --accent-candidate: #fb923c;
+  --dot-color: rgba(220, 38, 38, 0.06);
+}
+
+html {
+  transition: background-color 400ms ease, color 400ms ease;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Space Grotesk', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-panel);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent-default);
+  border-radius: 3px;
+}
+
+.graph-canvas {
+  background-image: radial-gradient(circle, var(--dot-color) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.kbd-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  padding: 2px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 2px 0 var(--border);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.edge-candidate {
+  stroke-dasharray: 8 4;
+  animation: dash-flow 0.8s linear infinite;
+}
