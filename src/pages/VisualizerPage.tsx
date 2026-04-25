@@ -181,7 +181,7 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
   const saveGraph = () => {
     const d = { version: '2.0', scenario, nodes: graph.nodes, edges: graph.edges };
     const blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `graphforge-${scenario}.json`; a.click();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `route-d-optimal-${scenario}.json`; a.click();
     addToast('Graph saved as JSON', 'success');
   };
 
@@ -232,7 +232,7 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
             <div style={{ width: 22, height: 22, borderRadius: 6, background: 'linear-gradient(135deg, var(--accent-accept), var(--accent-candidate))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <GitBranch size={12} style={{ color: '#fff' }} />
             </div>
-            <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--text-primary)', letterSpacing: '-0.2px' }}>GraphForge</span>
+            <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--text-primary)', letterSpacing: '-0.2px' }}>Route D. Optimal</span>
           </div>
           <div style={{ display: 'flex', gap: 6, marginLeft: 6 }}>
             {(['kruskal', 'prim'] as const).map(a => (

@@ -72,7 +72,7 @@ export default function LandingPage({ goApp, theme, setTheme }: Props) {
           <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, var(--accent-accept), var(--accent-candidate))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <GitBranch size={15} style={{ color: '#fff' }} />
           </div>
-          <span style={{ fontWeight: 800, fontSize: 17, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>GraphForge</span>
+          <span style={{ fontWeight: 800, fontSize: 17, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>Route D. Optimal</span>
           <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'var(--bg-elevated)', color: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace", border: '1px solid var(--border)' }}>v2.0</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -98,7 +98,7 @@ export default function LandingPage({ goApp, theme, setTheme }: Props) {
             </span>
           </h1>
           <p style={{ fontSize: 16, marginBottom: 12, color: 'var(--text-secondary)', maxWidth: 480, lineHeight: 1.65 }}>
-            Designing cost-efficient communication networks requires selecting optimal connections while minimizing total cost. GraphForge makes this <em>visual, interactive, and intuitive.</em>
+            Designing cost-efficient communication networks requires selecting optimal connections while minimizing total cost. Route D. Optimal makes this <em>visual, interactive, and intuitive.</em>
           </p>
           <p style={{ fontSize: 14, marginBottom: 30, color: 'var(--text-muted)', maxWidth: 460, lineHeight: 1.6 }}>
             Step through Kruskal's and Prim's algorithms. Race them side-by-side. Load real-world scenarios. Understand every edge decision.
@@ -106,7 +106,7 @@ export default function LandingPage({ goApp, theme, setTheme }: Props) {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <motion.button onClick={() => goApp()} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
               style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '13px 26px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, var(--accent-accept), var(--accent-candidate))', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 0 32px color-mix(in srgb, var(--accent-accept) 30%, transparent)' }}>
-              <GitBranch size={18} /> Launch GraphForge
+              <GitBranch size={18} /> Launch Route D. Optimal
             </motion.button>
             <button onClick={() => goApp('telecom')}
               style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '13px 20px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
@@ -180,7 +180,7 @@ export default function LandingPage({ goApp, theme, setTheme }: Props) {
       <footer style={{ padding: 24, textAlign: 'center', borderTop: '1px solid var(--border)', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-muted)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           <GitBranch size={13} style={{ color: 'var(--accent-accept)' }} />
-          GraphForge v2.0 — Network Cost Optimizer · React + D3 + Framer Motion
+          Route D. Optimal v2.0 — Network Cost Optimizer · React + D3 + Framer Motion
         </div>
       </footer>
     </div>

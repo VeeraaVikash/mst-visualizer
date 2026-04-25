@@ -1,9 +1,9 @@
 {
-  "name": "graphforge",
+  "name": "route-d-optimal",
   "private": true,
   "version": "2.0.0",
   "type": "module",
-  "description": "GraphForge — Network Cost Optimizer. Visualize MST algorithms with real-world scenarios.",
+  "description": "Route D. Optimal — Network Cost Optimizer. Visualize MST algorithms with real-world scenarios.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
