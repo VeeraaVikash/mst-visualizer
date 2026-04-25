@@ -249,10 +249,14 @@ const VisualizerPage: React.FC<VisualizerPageProps> = ({ theme, setSpecificTheme
   useKeyboardShortcuts(shortcutHandlers, true);
 
   // Auto-init compare when toggling on
+  const initCompareRef = useRef(initCompare);
+  useEffect(() => { initCompareRef.current = initCompare; }, [initCompare]);
+
   useEffect(() => {
     if (compareMode && graph.nodes.length >= 2 && graph.edges.length >= 1 && isGraphConnected(graph)) {
-      initCompare();
+      initCompareRef.current();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compareMode]);
 
   // Determine explanation for compare mode

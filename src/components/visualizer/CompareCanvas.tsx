@@ -10,8 +10,10 @@ interface CompareCanvasProps {
   primComplete: boolean;
 }
 
+type GSelection = d3.Selection<SVGGElement, unknown, null, undefined>;
+
 function renderHalf(
-  svg: d3.Selection<SVGGElement, unknown, null, undefined>,
+  svg: GSelection,
   graph: Graph,
   step: AlgorithmStep | null,
   width: number,
@@ -160,8 +162,8 @@ const CompareCanvas: React.FC<CompareCanvasProps> = ({
       .attr('stroke', 'var(--border)')
       .attr('stroke-width', 1);
 
-    const leftG = svg.append('g');
-    const rightG = svg.append('g');
+    const leftG = svg.append('g') as unknown as GSelection;
+    const rightG = svg.append('g') as unknown as GSelection;
 
     renderHalf(leftG, graph, kruskalStep, halfW, h, 0, kruskalComplete, "Kruskal's");
     renderHalf(rightG, graph, primStep, halfW, h, halfW, primComplete, "Prim's");

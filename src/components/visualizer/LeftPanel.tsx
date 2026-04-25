@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import {
   MousePointer2, Link2, Shuffle, Trash2, Save, FolderOpen,
   Network, Waypoints, Play, Pause, SkipBack, SkipForward,
-  RotateCcw, Gauge, FileWarning,
+  RotateCcw, Gauge,
 } from 'lucide-react';
 import type { Graph, AlgorithmType, CanvasMode, SavedGraph } from '../../types';
 

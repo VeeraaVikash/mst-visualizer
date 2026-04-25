@@ -2,6 +2,9 @@ import React, { useRef, useEffect, useCallback } from 'react';
 import * as d3 from 'd3';
 import type { Graph, AlgorithmStep, CanvasMode } from '../../types';
 
+type GraphEdge = Graph['edges'][number];
+type GraphNode = Graph['nodes'][number];
+
 interface GraphCanvasProps {
   graph: Graph;
   currentStep: AlgorithmStep | null;
@@ -52,15 +55,16 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
     svg.attr('width', width).attr('height', height).attr('viewBox', `0 0 ${width} ${height}`);
 
     // Click handler on background
-    svg.on('click', function (event: MouseEvent) {
-      if ((event.target as SVGElement).tagName === 'svg' || (event.target as SVGElement).classList.contains('canvas-bg')) {
-        const [x, y] = d3.pointer(event, this);
+    svg.on('click', function (event: Event) {
+      const target = event.target as SVGElement;
+      if (target.tagName === 'svg' || target.classList.contains('canvas-bg')) {
+        const [x, y] = d3.pointer(event as MouseEvent, this as SVGSVGElement);
         onCanvasClick(x, y);
       }
     });
 
     // Edges
-    const edgeGroup = svg.selectAll<SVGGElement, typeof graph.edges[0]>('.edge-group')
+    const edgeGroup = svg.selectAll<SVGGElement, GraphEdge>('.edge-group')
       .data(graph.edges, d => d.id)
       .join(
         enter => {
@@ -151,7 +155,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
     });
 
     // Nodes
-    const nodeGroup = svg.selectAll<SVGGElement, typeof graph.nodes[0]>('.node-group')
+    const nodeGroup = svg.selectAll<SVGGElement, GraphNode>('.node-group')
       .data(graph.nodes, d => d.id)
       .join(
         enter => {
@@ -207,14 +211,14 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
         .text(d.id);
 
       // Click handler
-      g.on('click', (event: MouseEvent) => {
-        event.stopPropagation();
+      g.on('click', (event: Event) => {
+        (event as MouseEvent).stopPropagation();
         onNodeClick(d.id);
       });
     });
 
     // Drag behavior
-    const drag = d3.drag<SVGGElement, typeof graph.nodes[0]>()
+    const drag = d3.drag<SVGGElement, GraphNode>()
       .on('start', function () {
         d3.select(this).raise();
       })
