@@ -1,389 +1,348 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import type { ThemeName, Graph, SavedGraph } from '../types';
-import { isGraphConnected } from '../utils/graphUtils';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { GitBranch, ArrowLeft, Keyboard, Activity, X } from 'lucide-react';
+import type { ThemeName, AlgorithmType, Graph, AlgorithmStep } from '../types';
+import { useGraph } from '../hooks/useGraph';
+import { useToast } from '../hooks/useToast';
 import { runKruskal } from '../algorithms/kruskal';
 import { runPrim } from '../algorithms/prim';
-import type { AlgorithmStep } from '../types';
-import Header from '../components/shared/Header';
+import { isGraphConnected } from '../utils/graphUtils';
+import { SCENARIOS } from '../data/scenarios';
+import ThemeToggle from '../components/shared/ThemeToggle';
 import Toast from '../components/shared/Toast';
-import LeftPanel from '../components/visualizer/LeftPanel';
-import RightPanel from '../components/visualizer/RightPanel';
 import GraphCanvas from '../components/visualizer/GraphCanvas';
-import CompareCanvas from '../components/visualizer/CompareCanvas';
+import ControlPanel from '../components/visualizer/ControlPanel';
+import RightPanel from '../components/visualizer/RightPanel';
 import ExplanationBar from '../components/visualizer/ExplanationBar';
-import KeyboardHelpModal from '../components/visualizer/KeyboardHelpModal';
-import { useGraph } from '../hooks/useGraph';
-import { useAlgorithm } from '../hooks/useAlgorithm';
-import { useToast } from '../hooks/useToast';
-import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import KeyboardModal from '../components/visualizer/KeyboardModal';
 
-interface VisualizerPageProps {
-  theme: ThemeName;
-  setSpecificTheme: (t: ThemeName) => void;
-  cycleTheme: () => void;
-}
+interface Props { goLanding: () => void; theme: ThemeName; setTheme: (t: ThemeName) => void; cycleTheme: () => void; initialScenario: string; }
 
-const VisualizerPage: React.FC<VisualizerPageProps> = ({ theme, setSpecificTheme, cycleTheme }) => {
-  const [compareMode, setCompareMode] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
-  const [weightInput, setWeightInput] = useState<{ source: string; target: string; x: number; y: number } | null>(null);
-  const weightInputRef = useRef<HTMLInputElement>(null);
-
-  // Compare mode state
-  const [compareKruskalSteps, setCompareKruskalSteps] = useState<AlgorithmStep[]>([]);
-  const [comparePrimSteps, setComparePrimSteps] = useState<AlgorithmStep[]>([]);
-  const [compareStepIndex, setCompareStepIndex] = useState(-1);
-  const [compareIsPlaying, setCompareIsPlaying] = useState(false);
-  const compareIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
+export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme, initialScenario }: Props) {
+  const { graph, canvasMode, connectSource, setConnectSource, setCanvasMode, setGraph,
+    addNode, updateNodePosition, addEdge, deleteNode, deleteEdge, updateEdgeWeight,
+    resetGraph, loadGraph, randomGraph, toggleMode, setEdgeCounter } = useGraph();
   const { toasts, addToast, removeToast } = useToast();
-  const {
-    graph, canvasMode, connectSource, setConnectSource,
-    addNode, updateNodePosition, addEdge, resetGraph,
-    loadGraph, randomGraph, toggleMode, setCanvasMode,
-  } = useGraph();
 
-  const algo = useAlgorithm();
+  const [deleteMode, setDeleteMode] = useState(false);
+  const [weightPopup, setWeightPopup] = useState<{ source: string; target: string; x: number; y: number } | null>(null);
+  const [editEdge, setEditEdge] = useState<Graph['edges'][number] | null>(null);
+  const weightInputRef = useRef<HTMLInputElement>(null);
+  const canvasContRef = useRef<HTMLDivElement>(null);
 
-  const canvasRef = useRef<HTMLDivElement>(null);
+  // Algorithm state
+  const [algoType, setAlgoType] = useState<AlgorithmType>('kruskal');
+  const [startNode, setStartNode] = useState('');
+  const [steps, setSteps] = useState<AlgorithmStep[]>([]);
+  const [stepIdx, setStepIdx] = useState(-1);
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(50);
+  const playRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const handleCanvasClick = useCallback((x: number, y: number) => {
-    if (canvasMode === 'addNode') {
-      addNode(x, y);
+  // Race state
+  const [kSteps, setKSteps] = useState<AlgorithmStep[]>([]);
+  const [pSteps, setPSteps] = useState<AlgorithmStep[]>([]);
+  const [raceIdx, setRaceIdx] = useState(-1);
+  const [racePlaying, setRacePlaying] = useState(false);
+  const raceRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // UI state
+  const [scenario, setScenario] = useState(initialScenario || 'telecom');
+  const [rightTab, setRightTab] = useState('info');
+  const [showHelp, setShowHelp] = useState(false);
+  const [nodeCount, setNodeCount] = useState(7);
+
+  // Load scenario on change
+  useEffect(() => {
+    const sc = SCENARIOS[scenario];
+    if (sc) {
+      const g = { nodes: [...sc.graph.nodes], edges: [...sc.graph.edges] };
+      loadGraph(g);
+      setEdgeCounter(sc.graph.edges.length);
+      resetAlgo();
+      setDeleteMode(false);
+      setCanvasMode('select');
     }
-  }, [canvasMode, addNode]);
+  }, [scenario]);
 
-  const handleNodeClick = useCallback((id: string) => {
-    if (canvasMode === 'connectEdge') {
-      if (!connectSource) {
-        setConnectSource(id);
-      } else {
-        // Show weight input popup
-        const node = graph.nodes.find(n => n.id === id);
-        const srcNode = graph.nodes.find(n => n.id === connectSource);
-        if (node && srcNode) {
-          setWeightInput({
-            source: connectSource,
-            target: id,
-            x: (srcNode.x + node.x) / 2,
-            y: (srcNode.y + node.y) / 2,
-          });
-          setTimeout(() => weightInputRef.current?.focus(), 50);
-        }
-      }
+  // Sync startNode
+  useEffect(() => {
+    if (graph.nodes.length > 0 && (!startNode || !graph.nodes.find(n => n.id === startNode))) {
+      setStartNode(graph.nodes[0].id);
     }
-  }, [canvasMode, connectSource, setConnectSource, graph.nodes]);
+  }, [graph.nodes]);
 
-  const handleWeightSubmit = useCallback((weight: string) => {
-    if (!weightInput) return;
-    const w = parseInt(weight, 10);
-    if (isNaN(w) || w < 1 || w > 999) {
-      addToast('Weight must be 1-999', 'warning');
-      setWeightInput(null);
-      setConnectSource(null);
-      return;
-    }
-    const err = addEdge(weightInput.source, weightInput.target, w);
-    if (err) {
-      addToast(err, 'error');
-    }
-    setWeightInput(null);
-    setConnectSource(null);
-  }, [weightInput, addEdge, addToast, setConnectSource]);
+  function resetAlgo() {
+    setSteps([]); setStepIdx(-1); setPlaying(false);
+    if (playRef.current) { clearInterval(playRef.current); playRef.current = null; }
+  }
 
-  const handleInitAlgorithm = useCallback(() => {
-    if (graph.nodes.length < 2) {
-      addToast('Add at least 2 nodes', 'info');
-      return;
-    }
-    if (graph.edges.length < 1) {
-      addToast('Add at least 1 edge', 'info');
-      return;
-    }
-    if (!isGraphConnected(graph)) {
-      addToast('Graph is disconnected. MST requires a connected graph.', 'warning');
-      return;
-    }
-    algo.initAlgorithm(graph);
-  }, [graph, algo, addToast]);
+  // Graph ops that also reset algo
+  const handleDeleteNode = (id: string) => { deleteNode(id); resetAlgo(); };
+  const handleDeleteEdge = (id: string) => { deleteEdge(id); resetAlgo(); };
+  const handleUpdateWeight = (id: string, w: number) => { updateEdgeWeight(id, w); resetAlgo(); };
 
-  const handleSaveGraph = useCallback(() => {
-    const data: SavedGraph = {
-      version: '1.0',
-      nodes: graph.nodes,
-      edges: graph.edges,
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'mst-graph.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    addToast('Graph saved', 'success');
-  }, [graph, addToast]);
+  const doAddEdge = (src: string, tgt: string, w: number) => {
+    const err = addEdge(src, tgt, w);
+    if (err) addToast(err, 'error');
+    return err;
+  };
 
-  const handleRandomGraph = useCallback((count: number) => {
-    const el = canvasRef.current;
-    const w = el?.clientWidth ?? 800;
-    const h = el?.clientHeight ?? 500;
-    randomGraph(count, w, h);
-    algo.resetAlgorithm();
-  }, [randomGraph, algo]);
+  // Run algorithm
+  const runAlgo = useCallback(() => {
+    if (graph.nodes.length < 2) { addToast('Need 2+ nodes', 'info'); return; }
+    if (!graph.edges.length) { addToast('Need at least 1 edge', 'info'); return; }
+    if (!isGraphConnected(graph)) { addToast('Graph must be connected for MST', 'warning'); return; }
+    const unit = SCENARIOS[scenario]?.unit ?? '';
+    const s = algoType === 'kruskal'
+      ? runKruskal(graph, unit)
+      : runPrim(graph, startNode || graph.nodes[0].id, unit);
+    setSteps(s); setStepIdx(-1); setPlaying(false);
+    if (playRef.current) { clearInterval(playRef.current); playRef.current = null; }
+  }, [graph, algoType, startNode, scenario, addToast]);
 
-  const handleResetGraph = useCallback(() => {
-    resetGraph();
-    algo.resetAlgorithm();
-  }, [resetGraph, algo]);
+  const stepFwd = useCallback(() => {
+    setStepIdx(p => { const n = p + 1; if (n >= steps.length) { setPlaying(false); return p; } if (steps[n]?.type === 'COMPLETE') setPlaying(false); return n; });
+  }, [steps]);
 
-  // Compare mode logic
-  const handleToggleCompare = useCallback(() => {
-    setCompareMode(prev => !prev);
-    if (compareIntervalRef.current) {
-      clearInterval(compareIntervalRef.current);
-      compareIntervalRef.current = null;
-    }
-    setCompareIsPlaying(false);
-    setCompareStepIndex(-1);
-  }, []);
+  const stepBack = useCallback(() => setStepIdx(p => Math.max(p - 1, -1)), []);
 
-  const initCompare = useCallback(() => {
-    if (graph.nodes.length < 2 || graph.edges.length < 1) return;
-    if (!isGraphConnected(graph)) {
-      addToast('Graph must be connected for compare', 'warning');
-      return;
-    }
-    const kSteps = runKruskal(graph);
-    const pSteps = runPrim(graph, graph.nodes[0].id);
-    setCompareKruskalSteps(kSteps);
-    setComparePrimSteps(pSteps);
-    setCompareStepIndex(-1);
-    setCompareIsPlaying(true);
-  }, [graph, addToast]);
+  const togglePlay = useCallback(() => {
+    if (!steps.length) { runAlgo(); return; }
+    if (playing) { setPlaying(false); return; }
+    if (stepIdx >= steps.length - 1) setStepIdx(-1);
+    setPlaying(true);
+  }, [playing, steps, stepIdx, runAlgo]);
 
   useEffect(() => {
-    if (compareMode && compareIsPlaying) {
-      const maxLen = Math.max(compareKruskalSteps.length, comparePrimSteps.length);
-      const delay = Math.max(200, 2000 - algo.speed * 18);
-      compareIntervalRef.current = setInterval(() => {
-        setCompareStepIndex(prev => {
-          const next = prev + 1;
-          if (next >= maxLen) {
-            setCompareIsPlaying(false);
-            if (compareIntervalRef.current) clearInterval(compareIntervalRef.current);
-            return prev;
-          }
-          return next;
+    if (playing && steps.length > 0) {
+      const delay = Math.max(160, 2000 - speed * 18);
+      playRef.current = setInterval(() => {
+        setStepIdx(p => {
+          const n = p + 1;
+          if (n >= steps.length) { setPlaying(false); if (playRef.current) clearInterval(playRef.current); return p; }
+          if (steps[n]?.type === 'COMPLETE') { setPlaying(false); if (playRef.current) clearInterval(playRef.current); }
+          return n;
         });
       }, delay);
-    } else if (compareIntervalRef.current) {
-      clearInterval(compareIntervalRef.current);
-      compareIntervalRef.current = null;
-    }
-    return () => {
-      if (compareIntervalRef.current) {
-        clearInterval(compareIntervalRef.current);
-        compareIntervalRef.current = null;
-      }
-    };
-  }, [compareMode, compareIsPlaying, compareKruskalSteps.length, comparePrimSteps.length, algo.speed]);
+    } else if (playRef.current) { clearInterval(playRef.current); playRef.current = null; }
+    return () => { if (playRef.current) clearInterval(playRef.current); };
+  }, [playing, speed, steps]);
 
-  const kruskalCompareStep = compareStepIndex >= 0 && compareStepIndex < compareKruskalSteps.length
-    ? compareKruskalSteps[compareStepIndex] : null;
-  const primCompareStep = compareStepIndex >= 0 && compareStepIndex < comparePrimSteps.length
-    ? comparePrimSteps[compareStepIndex] : null;
-
-  // Keyboard shortcuts
-  const shortcutHandlers = useMemo(() => ({
-    onPlayPause: () => {
-      if (compareMode) {
-        if (compareKruskalSteps.length === 0) {
-          initCompare();
-        } else {
-          setCompareIsPlaying(p => !p);
-        }
-      } else {
-        if (algo.steps.length > 0) {
-          algo.togglePlayPause();
-        } else {
-          handleInitAlgorithm();
-        }
-      }
-    },
-    onReset: () => {
-      algo.resetAnimation();
-      setCompareStepIndex(-1);
-      setCompareIsPlaying(false);
-    },
-    onStepForward: () => {
-      if (compareMode) {
-        const maxLen = Math.max(compareKruskalSteps.length, comparePrimSteps.length);
-        setCompareStepIndex(p => Math.min(p + 1, maxLen - 1));
-      } else {
-        algo.stepForward();
-      }
-    },
-    onStepBackward: () => {
-      if (compareMode) {
-        setCompareStepIndex(p => Math.max(p - 1, -1));
-      } else {
-        algo.stepBackward();
-      }
-    },
-    onToggleNodeMode: () => toggleMode('addNode'),
-    onToggleEdgeMode: () => toggleMode('connectEdge'),
-    onSwitchKruskal: () => { algo.setAlgorithmType('kruskal'); algo.resetAlgorithm(); },
-    onSwitchPrim: () => { algo.setAlgorithmType('prim'); algo.resetAlgorithm(); },
-    onToggleCompare: handleToggleCompare,
-    onCycleTheme: cycleTheme,
-    onRandomGraph: () => handleRandomGraph(7),
-    onShowHelp: () => setShowHelp(p => !p),
-    onEscape: () => {
-      setShowHelp(false);
-      setCanvasMode('select');
-      setConnectSource(null);
-      setWeightInput(null);
-    },
-  }), [algo, toggleMode, handleToggleCompare, cycleTheme, handleRandomGraph, setCanvasMode, setConnectSource, handleInitAlgorithm, compareMode, compareKruskalSteps.length, comparePrimSteps.length, initCompare]);
-
-  useKeyboardShortcuts(shortcutHandlers, true);
-
-  // Auto-init compare when toggling on
-  const initCompareRef = useRef(initCompare);
-  useEffect(() => { initCompareRef.current = initCompare; }, [initCompare]);
+  // Race
+  const startRace = useCallback(() => {
+    if (graph.nodes.length < 2 || !isGraphConnected(graph)) { addToast('Need connected graph for race', 'warning'); return; }
+    const unit = SCENARIOS[scenario]?.unit ?? '';
+    const ks = runKruskal(graph, unit);
+    const ps = runPrim(graph, graph.nodes[0].id, unit);
+    setKSteps(ks); setPSteps(ps); setRaceIdx(-1); setRacePlaying(true);
+    setRightTab('race');
+  }, [graph, scenario, addToast]);
 
   useEffect(() => {
-    if (compareMode && graph.nodes.length >= 2 && graph.edges.length >= 1 && isGraphConnected(graph)) {
-      initCompareRef.current();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compareMode]);
+    if (racePlaying && (kSteps.length > 0 || pSteps.length > 0)) {
+      const maxL = Math.max(kSteps.length, pSteps.length);
+      const delay = Math.max(160, 2000 - speed * 18);
+      raceRef.current = setInterval(() => {
+        setRaceIdx(p => { const n = p + 1; if (n >= maxL) { setRacePlaying(false); if (raceRef.current) clearInterval(raceRef.current); return p; } return n; });
+      }, delay);
+    } else if (raceRef.current) { clearInterval(raceRef.current); raceRef.current = null; }
+    return () => { if (raceRef.current) clearInterval(raceRef.current); };
+  }, [racePlaying, kSteps.length, pSteps.length, speed]);
 
-  // Determine explanation for compare mode
-  const compareExplanation = compareMode
-    ? (kruskalCompareStep || primCompareStep)
-    : null;
+  // Canvas events
+  const handleBgClick = useCallback((x: number, y: number) => {
+    if (canvasMode === 'addNode' && !deleteMode) addNode(x, y);
+  }, [canvasMode, deleteMode, addNode]);
+
+  const handleNodeClick = useCallback((id: string) => {
+    if (deleteMode) { handleDeleteNode(id); return; }
+    if (canvasMode === 'connectEdge') {
+      if (!connectSource) { setConnectSource(id); }
+      else {
+        const s = graph.nodes.find(n => n.id === id), src = graph.nodes.find(n => n.id === connectSource);
+        if (s && src) { setWeightPopup({ source: connectSource, target: id, x: (src.x + s.x) / 2, y: (src.y + s.y) / 2 }); setTimeout(() => weightInputRef.current?.focus(), 50); }
+      }
+    }
+  }, [deleteMode, canvasMode, connectSource, graph.nodes, setConnectSource]);
+
+  const handleEdgeAction = useCallback((edge: Graph['edges'][number], action: 'edit' | 'delete') => {
+    if (action === 'delete') { handleDeleteEdge(edge.id); return; }
+    setEditEdge(edge);
+  }, []);
+
+  const submitWeight = (val: string) => {
+    if (!weightPopup) return;
+    const w = parseInt(val, 10);
+    doAddEdge(weightPopup.source, weightPopup.target, w);
+    setWeightPopup(null); setConnectSource(null);
+  };
+
+  // Save graph
+  const saveGraph = () => {
+    const d = { version: '2.0', scenario, nodes: graph.nodes, edges: graph.edges };
+    const blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `graphforge-${scenario}.json`; a.click();
+    addToast('Graph saved as JSON', 'success');
+  };
+
+  const handleRandom = (cnt: number) => {
+    const el = canvasContRef.current;
+    const w = el?.clientWidth ?? 700, h = el?.clientHeight ?? 450;
+    randomGraph(cnt, w, h);
+    resetAlgo(); setDeleteMode(false);
+  };
+
+  const handleScenario = (id: string) => { setScenario(id); setRightTab('info'); };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT') { if (e.key === 'Escape') t.blur(); return; }
+      switch (e.key) {
+        case ' ': e.preventDefault(); togglePlay(); break;
+        case 'r': case 'R': setStepIdx(-1); setPlaying(false); break;
+        case 'n': case 'N': setDeleteMode(false); toggleMode('addNode'); break;
+        case 'e': case 'E': setDeleteMode(false); toggleMode('connectEdge'); break;
+        case 'd': case 'D': setDeleteMode(p => { if (!p) setCanvasMode('select'); return !p; }); break;
+        case 'k': case 'K': setAlgoType('kruskal'); resetAlgo(); break;
+        case 'p': case 'P': setAlgoType('prim'); resetAlgo(); break;
+        case 'c': case 'C': startRace(); break;
+        case 'ArrowRight': e.preventDefault(); stepFwd(); break;
+        case 'ArrowLeft': e.preventDefault(); stepBack(); break;
+        case 'g': case 'G': handleRandom(nodeCount); break;
+        case 't': case 'T': cycleTheme(); break;
+        case '?': case '/': e.preventDefault(); setShowHelp(p => !p); break;
+        case 'Escape': setShowHelp(false); setCanvasMode('select'); setConnectSource(null); setWeightPopup(null); setEditEdge(null); setDeleteMode(false); break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [togglePlay, stepFwd, stepBack, startRace, cycleTheme, nodeCount, toggleMode]);
+
+  const curStep = stepIdx >= 0 && stepIdx < steps.length ? steps[stepIdx] : null;
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden" style={{ background: 'var(--bg-base)' }}>
-      <Header
-        theme={theme}
-        setSpecificTheme={setSpecificTheme}
-        algorithmType={algo.algorithmType}
-        compareMode={compareMode}
-        onToggleCompare={handleToggleCompare}
-        onShowHelp={() => setShowHelp(true)}
-        nodeCount={graph.nodes.length}
-        edgeCount={graph.edges.length}
-      />
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-base)' }}>
+      {/* HEADER */}
+      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', height: 46, background: 'var(--bg-panel)', borderBottom: '1px solid var(--border)', flexShrink: 0, gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <button onClick={goLanding} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}><ArrowLeft size={15} /></button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }} onClick={goLanding}>
+            <div style={{ width: 22, height: 22, borderRadius: 6, background: 'linear-gradient(135deg, var(--accent-accept), var(--accent-candidate))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <GitBranch size={12} style={{ color: '#fff' }} />
+            </div>
+            <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--text-primary)', letterSpacing: '-0.2px' }}>GraphForge</span>
+          </div>
+          <div style={{ display: 'flex', gap: 6, marginLeft: 6 }}>
+            {(['kruskal', 'prim'] as const).map(a => (
+              <span key={a} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, padding: '2px 7px', borderRadius: 4, background: 'var(--bg-elevated)',
+                border: `1px solid ${algoType === a ? (a === 'kruskal' ? 'var(--accent-accept)' : 'var(--accent-candidate)') : 'var(--border)'}`,
+                color: algoType === a ? (a === 'kruskal' ? 'var(--accent-accept)' : 'var(--accent-candidate)') : 'var(--text-muted)' }}>
+                {a === 'kruskal' ? 'Kruskal O(E log E)' : 'Prim O(E log V)'}
+              </span>
+            ))}
+            {graph.nodes.length > 0 && <span style={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-secondary)' }}>V={graph.nodes.length} E={graph.edges.length}</span>}
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
+          <button onClick={startRace}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, borderRadius: 8, padding: '5px 12px', fontSize: 11, fontFamily: "'JetBrains Mono', monospace", border: '1px solid var(--accent-active)', background: 'color-mix(in srgb, var(--accent-active) 12%, transparent)', color: 'var(--accent-active)', cursor: 'pointer' }}
+            title="Race both algorithms [C]">
+            <Activity size={12} /> Race [C]
+          </button>
+          <ThemeToggle theme={theme} setTheme={setTheme} />
+          <button onClick={() => setShowHelp(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', cursor: 'pointer' }} title="Shortcuts [?]">
+            <Keyboard size={13} />
+          </button>
+        </div>
+      </header>
 
-      <div className="flex flex-1 min-h-0">
-        <LeftPanel
-          graph={graph}
-          canvasMode={canvasMode}
-          algorithmType={algo.algorithmType}
-          startNode={algo.startNode}
-          isPlaying={algo.isPlaying}
-          speed={algo.speed}
-          onToggleMode={toggleMode}
-          onRandomGraph={handleRandomGraph}
-          onResetGraph={handleResetGraph}
-          onSaveGraph={handleSaveGraph}
-          onLoadGraph={(g: Graph) => { loadGraph(g); algo.resetAlgorithm(); }}
-          onSetAlgorithm={(t) => { algo.setAlgorithmType(t); algo.resetAlgorithm(); }}
-          onSetStartNode={algo.setStartNode}
-          onPlay={algo.play}
-          onPause={algo.pause}
-          onStepBack={algo.stepBackward}
-          onStepForward={algo.stepForward}
-          onReset={algo.resetAnimation}
-          onSetSpeed={algo.setSpeed}
-          onInitAlgorithm={handleInitAlgorithm}
-          addToast={addToast}
+      {/* BODY */}
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+        <ControlPanel
+          graph={graph} canvasMode={canvasMode} deleteMode={deleteMode} algoType={algoType}
+          startNode={startNode} isPlaying={playing} speed={speed} scenario={scenario}
+          steps={steps} stepIdx={stepIdx} nodeCount={nodeCount}
+          onToggleMode={(m) => { setDeleteMode(false); toggleMode(m); }}
+          onDeleteMode={() => setDeleteMode(p => { if (!p) setCanvasMode('select'); return !p; })}
+          onRandom={handleRandom} onResetGraph={() => { resetGraph(); resetAlgo(); setDeleteMode(false); }}
+          onSave={saveGraph}
+          onLoad={(g) => { loadGraph(g); setEdgeCounter(g.edges.length); setDeleteMode(false); resetAlgo(); }}
+          onSetAlgo={(t) => { setAlgoType(t); resetAlgo(); }}
+          onSetStart={setStartNode} onRun={runAlgo}
+          onTogglePlay={togglePlay} onStepFwd={stepFwd} onStepBack={stepBack}
+          onResetAnimation={() => { setStepIdx(-1); setPlaying(false); }}
+          onSpeedChange={setSpeed} onScenario={handleScenario}
+          onNodeCount={setNodeCount} addToast={addToast}
         />
 
-        <div className="flex-1 relative min-w-0" ref={canvasRef} style={{ background: 'var(--bg-canvas)' }}>
-          {compareMode ? (
-            <CompareCanvas
-              graph={graph}
-              kruskalStep={kruskalCompareStep}
-              primStep={primCompareStep}
-              kruskalComplete={kruskalCompareStep?.type === 'COMPLETE'}
-              primComplete={primCompareStep?.type === 'COMPLETE'}
-            />
-          ) : (
-            <GraphCanvas
-              graph={graph}
-              currentStep={algo.currentStepData}
-              canvasMode={canvasMode}
-              connectSource={connectSource}
-              onCanvasClick={handleCanvasClick}
-              onNodeClick={handleNodeClick}
-              onNodeDrag={updateNodePosition}
-              isComplete={algo.isComplete}
-            />
+        {/* CANVAS */}
+        <div ref={canvasContRef} style={{ flex: 1, position: 'relative', minWidth: 0, background: 'var(--bg-canvas)' }}>
+          <GraphCanvas
+            graph={graph} step={curStep} canvasMode={canvasMode} deleteMode={deleteMode}
+            connectSource={connectSource} onBgClick={handleBgClick} onNodeClick={handleNodeClick}
+            onNodeDrag={updateNodePosition} onEdgeAction={handleEdgeAction}
+            isComplete={curStep?.type === 'COMPLETE'}
+          />
+
+          {/* Weight popup */}
+          {weightPopup && (
+            <div style={{ position: 'absolute', zIndex: 30, left: weightPopup.x - 75, top: weightPopup.y - 24, display: 'flex', alignItems: 'center', gap: 7, padding: 9, borderRadius: 10, background: 'var(--bg-panel)', border: '1px solid var(--accent-active)', boxShadow: 'var(--shadow)' }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-secondary)' }}>{weightPopup.source}—{weightPopup.target}:</span>
+              <input ref={weightInputRef} type="number" min={1} max={9999} defaultValue={10}
+                style={{ width: 56, borderRadius: 5, padding: '3px 7px', fontSize: 11, fontFamily: "'JetBrains Mono', monospace", background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border)', outline: 'none' }}
+                onKeyDown={e => { if (e.key === 'Enter') submitWeight((e.target as HTMLInputElement).value); if (e.key === 'Escape') { setWeightPopup(null); setConnectSource(null); } }}
+                onBlur={e => { if (weightPopup) submitWeight(e.target.value); }} />
+            </div>
           )}
 
-          {/* Weight input popup */}
-          {weightInput && (
-            <div
-              className="absolute z-20 flex items-center gap-2 rounded-lg p-2 shadow-lg"
-              style={{
-                left: weightInput.x - 60,
-                top: weightInput.y - 20,
-                background: 'var(--bg-panel)',
-                border: '1px solid var(--accent-active)',
-              }}
-            >
-              <span className="font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>
-                {weightInput.source}-{weightInput.target} w=
-              </span>
-              <input
-                ref={weightInputRef}
-                type="number"
-                min={1}
-                max={999}
-                defaultValue={1}
-                className="w-14 rounded px-2 py-1 text-xs font-mono outline-none"
-                style={{
-                  background: 'var(--bg-elevated)',
-                  color: 'var(--text-primary)',
-                  border: '1px solid var(--border)',
-                }}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    handleWeightSubmit((e.target as HTMLInputElement).value);
-                  } else if (e.key === 'Escape') {
-                    setWeightInput(null);
-                    setConnectSource(null);
-                  }
-                }}
-                onBlur={e => handleWeightSubmit(e.target.value)}
-              />
+          {/* Edge edit modal */}
+          {editEdge && (
+            <div style={{ position: 'absolute', zIndex: 30, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', padding: 18, borderRadius: 13, background: 'var(--bg-panel)', border: '1px solid var(--accent-active)', boxShadow: 'var(--shadow)', minWidth: 230 }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: 'var(--text-primary)', marginBottom: 12, fontWeight: 600 }}>
+                Edit: {editEdge.source} — {editEdge.target}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Weight:</span>
+                <input id="edit-w" type="number" min={1} max={9999} defaultValue={editEdge.weight} autoFocus
+                  style={{ flex: 1, borderRadius: 5, padding: '4px 8px', fontSize: 12, fontFamily: "'JetBrains Mono', monospace", background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border)', outline: 'none' }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { const w = parseInt((document.getElementById('edit-w') as HTMLInputElement)?.value ?? '', 10); if (w >= 1 && w <= 9999) { handleUpdateWeight(editEdge.id, w); addToast(`Weight updated to ${w}`, 'success'); } setEditEdge(null); }
+                    if (e.key === 'Escape') setEditEdge(null);
+                  }} />
+              </div>
+              <div style={{ display: 'flex', gap: 7 }}>
+                <button onClick={() => {
+                  const w = parseInt((document.getElementById('edit-w') as HTMLInputElement)?.value ?? '', 10);
+                  if (w >= 1 && w <= 9999) { handleUpdateWeight(editEdge.id, w); addToast(`Weight → ${w}`, 'success'); } else addToast('Weight must be 1–9999', 'warning');
+                  setEditEdge(null);
+                }} style={{ flex: 1, padding: '7px 0', borderRadius: 7, border: 'none', background: 'var(--accent-accept)', color: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Update</button>
+                <button onClick={() => { handleDeleteEdge(editEdge.id); setEditEdge(null); addToast('Edge deleted', 'info'); }} style={{ flex: 1, padding: '7px 0', borderRadius: 7, border: '1px solid var(--accent-reject)', background: 'transparent', color: 'var(--accent-reject)', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Delete</button>
+                <button onClick={() => setEditEdge(null)} style={{ padding: '7px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}><X size={13} /></button>
+              </div>
             </div>
           )}
         </div>
 
-        {!compareMode && (
-          <RightPanel
-            graph={graph}
-            currentStep={algo.currentStepData}
-            stepIndex={algo.currentStep}
-            totalSteps={algo.steps.length}
-            algorithmType={algo.algorithmType}
-          />
-        )}
+        {/* RIGHT PANEL */}
+        <RightPanel
+          activeTab={rightTab} onTabChange={setRightTab}
+          graph={graph} steps={steps} currentIdx={stepIdx} algoType={algoType}
+          scenario={scenario} currentStep={curStep}
+          kSteps={kSteps} pSteps={pSteps} raceIdx={raceIdx} racePlaying={racePlaying}
+          onRaceToggle={() => setRacePlaying(p => !p)}
+          onRaceReset={() => { setRaceIdx(-1); setRacePlaying(false); }}
+          onRaceStepFwd={() => setRaceIdx(p => Math.min(p + 1, Math.max(kSteps.length, pSteps.length) - 1))}
+          onRaceStepBack={() => setRaceIdx(p => Math.max(p - 1, -1))}
+          speed={speed} onSpeedChange={setSpeed}
+          onJumpHistory={i => setStepIdx(i)}
+        />
       </div>
 
-      <ExplanationBar
-        currentStep={compareMode ? compareExplanation : algo.currentStepData}
-        stepIndex={compareMode ? compareStepIndex : algo.currentStep}
-      />
-
+      <ExplanationBar step={curStep} idx={stepIdx} />
       <Toast toasts={toasts} removeToast={removeToast} />
-      <KeyboardHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
+      <KeyboardModal open={showHelp} onClose={() => setShowHelp(false)} />
     </div>
   );
-};
-
-export default VisualizerPage;
+}

@@ -2,127 +2,47 @@ import type { Graph, GraphNode, GraphEdge } from '../types';
 
 export function generateNodeLabel(index: number): string {
   if (index < 26) return String.fromCharCode(65 + index);
-  const first = String.fromCharCode(65 + Math.floor(index / 26) - 1);
-  const second = String.fromCharCode(65 + (index % 26));
-  return first + second;
-}
-
-export function circleLayout(count: number, cx: number, cy: number, radius: number): { x: number; y: number }[] {
-  const positions: { x: number; y: number }[] = [];
-  for (let i = 0; i < count; i++) {
-    const angle = (2 * Math.PI * i) / count - Math.PI / 2;
-    positions.push({
-      x: cx + radius * Math.cos(angle),
-      y: cy + radius * Math.sin(angle),
-    });
-  }
-  return positions;
-}
-
-export function generateRandomGraph(nodeCount: number, canvasW: number, canvasH: number): Graph {
-  const cx = canvasW / 2;
-  const cy = canvasH / 2;
-  const radius = Math.min(canvasW, canvasH) * 0.35;
-  const positions = circleLayout(nodeCount, cx, cy, radius);
-
-  const nodes: GraphNode[] = positions.map((pos, i) => ({
-    id: generateNodeLabel(i),
-    x: pos.x,
-    y: pos.y,
-  }));
-
-  const edges: GraphEdge[] = [];
-  let edgeCounter = 0;
-
-  // Create spanning tree first (ensures connectivity)
-  const shuffled = [...nodes];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-
-  for (let i = 1; i < shuffled.length; i++) {
-    const w = Math.floor(Math.random() * 49) + 1;
-    edges.push({
-      id: `e${edgeCounter++}`,
-      source: shuffled[i - 1].id,
-      target: shuffled[i].id,
-      weight: w,
-    });
-  }
-
-  // Add extra edges
-  const extraCount = Math.floor(nodeCount * 0.6);
-  let attempts = 0;
-  let added = 0;
-  while (added < extraCount && attempts < 100) {
-    attempts++;
-    const i = Math.floor(Math.random() * nodeCount);
-    const j = Math.floor(Math.random() * nodeCount);
-    if (i === j) continue;
-    const src = nodes[i].id;
-    const tgt = nodes[j].id;
-    const exists = edges.some(
-      e => (e.source === src && e.target === tgt) || (e.source === tgt && e.target === src)
-    );
-    if (exists) continue;
-    const w = Math.floor(Math.random() * 49) + 1;
-    edges.push({
-      id: `e${edgeCounter++}`,
-      source: src,
-      target: tgt,
-      weight: w,
-    });
-    added++;
-  }
-
-  return { nodes, edges };
+  return String.fromCharCode(64 + Math.ceil((index + 1) / 26)) + String.fromCharCode(65 + (index % 26));
 }
 
 export function isGraphConnected(graph: Graph): boolean {
   if (graph.nodes.length === 0) return true;
-  const adj = new Map<string, Set<string>>();
-  for (const n of graph.nodes) adj.set(n.id, new Set());
-  for (const e of graph.edges) {
-    adj.get(e.source)?.add(e.target);
-    adj.get(e.target)?.add(e.source);
-  }
-
-  const visited = new Set<string>();
-  const queue = [graph.nodes[0].id];
-  visited.add(graph.nodes[0].id);
-
-  while (queue.length > 0) {
-    const curr = queue.shift()!;
-    const neighbors = adj.get(curr);
-    if (neighbors) {
-      for (const n of neighbors) {
-        if (!visited.has(n)) {
-          visited.add(n);
-          queue.push(n);
-        }
-      }
-    }
-  }
-
-  return visited.size === graph.nodes.length;
+  const adj: Record<string, string[]> = {};
+  graph.nodes.forEach(n => (adj[n.id] = []));
+  graph.edges.forEach(e => { adj[e.source]?.push(e.target); adj[e.target]?.push(e.source); });
+  const vis = new Set([graph.nodes[0].id]);
+  const q = [graph.nodes[0].id];
+  while (q.length) { const c = q.shift()!; (adj[c] || []).forEach(n => { if (!vis.has(n)) { vis.add(n); q.push(n); } }); }
+  return vis.size === graph.nodes.length;
 }
 
-export function edgeExists(edges: GraphEdge[], source: string, target: string): boolean {
-  return edges.some(
-    e => (e.source === source && e.target === target) || (e.source === target && e.target === source)
-  );
+export function edgeExists(edges: GraphEdge[], s: string, t: string): boolean {
+  return edges.some(e => (e.source === s && e.target === t) || (e.source === t && e.target === s));
 }
 
-export function getEdgeMidpoint(
-  nodes: GraphNode[],
-  edge: GraphEdge
-): { x: number; y: number } {
-  const src = nodes.find(n => n.id === edge.source);
-  const tgt = nodes.find(n => n.id === edge.target);
-  if (!src || !tgt) return { x: 0, y: 0 };
-  return {
-    x: (src.x + tgt.x) / 2,
-    y: (src.y + tgt.y) / 2,
-  };
+export function graphDensity(nodeCount: number, edgeCount: number): number {
+  return nodeCount < 2 ? 0 : (2 * edgeCount) / (nodeCount * (nodeCount - 1));
+}
+
+export function generateRandomGraph(count: number, w: number, h: number): Graph {
+  const cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.36;
+  const nodes: GraphNode[] = Array.from({ length: count }, (_, i) => {
+    const a = (2 * Math.PI * i / count) - Math.PI / 2;
+    return { id: generateNodeLabel(i), x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+  });
+  const edges: GraphEdge[] = [];
+  let ec = 0;
+  const shuf = [...nodes].sort(() => Math.random() - 0.5);
+  for (let i = 1; i < shuf.length; i++) {
+    edges.push({ id: `e${ec++}`, source: shuf[i-1].id, target: shuf[i].id, weight: Math.floor(Math.random() * 49) + 1 });
+  }
+  let added = 0, att = 0;
+  while (added < Math.floor(count * 0.65) && att < 150) {
+    att++;
+    const a = Math.floor(Math.random() * count), b = Math.floor(Math.random() * count);
+    if (a === b) continue;
+    const s = nodes[a].id, t = nodes[b].id;
+    if (!edgeExists(edges, s, t)) { edges.push({ id: `e${ec++}`, source: s, target: t, weight: Math.floor(Math.random() * 49) + 1 }); added++; }
+  }
+  return { nodes, edges };
 }

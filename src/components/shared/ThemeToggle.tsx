@@ -2,38 +2,22 @@ import React from 'react';
 import { Moon, Sun, Swords } from 'lucide-react';
 import type { ThemeName } from '../../types';
 
-interface ThemeToggleProps {
-  theme: ThemeName;
-  setSpecificTheme: (t: ThemeName) => void;
-}
+interface Props { theme: ThemeName; setTheme: (t: ThemeName) => void; }
+const items = [{ n: 'dark' as ThemeName, I: Moon }, { n: 'light' as ThemeName, I: Sun }, { n: 'crimson' as ThemeName, I: Swords }];
 
-const ThemeToggle: React.FC<ThemeToggleProps> = ({ theme, setSpecificTheme }) => {
-  const themes: { name: ThemeName; icon: React.ReactNode; label: string }[] = [
-    { name: 'dark', icon: <Moon size={16} />, label: 'Dark theme' },
-    { name: 'light', icon: <Sun size={16} />, label: 'Light theme' },
-    { name: 'crimson', icon: <Swords size={16} />, label: 'Crimson theme' },
-  ];
-
+export default function ThemeToggle({ theme, setTheme }: Props) {
   return (
-    <div className="flex items-center gap-1 rounded-lg p-1" style={{ background: 'var(--bg-elevated)' }}>
-      {themes.map(t => (
-        <button
-          key={t.name}
-          onClick={() => setSpecificTheme(t.name)}
-          title={t.label}
-          className="relative rounded-md px-2 py-1.5 transition-all duration-200"
-          style={{
-            color: theme === t.name ? 'var(--text-primary)' : 'var(--text-muted)',
-            background: theme === t.name ? 'var(--bg-panel)' : 'transparent',
-            boxShadow: theme === t.name ? '0 0 8px var(--accent-active)' : 'none',
-            border: theme === t.name ? '1px solid var(--accent-active)' : '1px solid transparent',
-          }}
-        >
-          {t.icon}
+    <div style={{ display: 'flex', gap: 2, padding: 3, borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+      {items.map(({ n, I }) => (
+        <button key={n} onClick={() => setTheme(n)}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 26, borderRadius: 6,
+            border: theme === n ? '1px solid var(--accent-active)' : '1px solid transparent',
+            background: theme === n ? 'var(--bg-panel)' : 'transparent',
+            color: theme === n ? 'var(--text-primary)' : 'var(--text-muted)',
+            boxShadow: theme === n ? '0 0 6px var(--glow-active)' : 'none', transition: 'all 200ms' }}>
+          <I size={13} />
         </button>
       ))}
     </div>
   );
-};
-
-export default ThemeToggle;
+}

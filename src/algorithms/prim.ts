@@ -1,105 +1,48 @@
 import type { Graph, AlgorithmStep } from '../types';
 
-export function runPrim(graph: Graph, startNodeId: string): AlgorithmStep[] {
+export function runPrim(graph: Graph, startId: string, unit = ''): AlgorithmStep[] {
   const steps: AlgorithmStep[] = [];
-  const nodeIds = graph.nodes.map(n => n.id);
+  const ids = graph.nodes.map(n => n.id);
+  const visited = new Set([startId]);
+  const mst: string[] = [], rej: string[] = [];
+  let cost = 0;
+  const u = unit ? ` ${unit}` : '';
 
-  const visited = new Set<string>();
-  const mstEdges: string[] = [];
-  const rejectedEdges: string[] = [];
-  let mstCost = 0;
+  steps.push({ type:'ADD_NODE', nodeId:startId,
+    explanation:`Prim's: Starting from "${startId}". Grow the network by always connecting the cheapest reachable unvisited node.`,
+    mstCost:0, edgesSelected:0, highlightedEdges:[], mstEdges:[], rejectedEdges:[], candidateEdges:[], activeNodes:[startId], costDelta:0 });
 
-  visited.add(startNodeId);
-
-  steps.push({
-    type: 'ADD_NODE',
-    nodeId: startNodeId,
-    explanation: `Prim's Algorithm: Starting from node ${startNodeId}. This node is now in our MST. We will grow the tree by always picking the cheapest edge crossing the cut.`,
-    mstCost: 0,
-    edgesSelected: 0,
-    highlightedEdges: [],
-    mstEdges: [],
-    rejectedEdges: [],
-    candidateEdges: [],
-    activeNodes: [startNodeId],
-  });
-
-  while (visited.size < nodeIds.length) {
-    const candidateEdges: { edge: typeof graph.edges[0]; unvisitedNode: string }[] = [];
-
-    for (const edge of graph.edges) {
-      const srcVisited = visited.has(edge.source);
-      const tgtVisited = visited.has(edge.target);
-
-      if (srcVisited && !tgtVisited) {
-        candidateEdges.push({ edge, unvisitedNode: edge.target });
-      } else if (!srcVisited && tgtVisited) {
-        candidateEdges.push({ edge, unvisitedNode: edge.source });
-      }
+  while (visited.size < ids.length) {
+    const frontier: Array<{edge: typeof graph.edges[0]; newNode: string}> = [];
+    for (const e of graph.edges) {
+      const sv = visited.has(e.source), tv = visited.has(e.target);
+      if (sv && !tv) frontier.push({ edge: e, newNode: e.target });
+      else if (!sv && tv) frontier.push({ edge: e, newNode: e.source });
     }
+    if (!frontier.length) break;
 
-    if (candidateEdges.length === 0) break;
+    const candIds = frontier.map(c => c.edge.id);
+    steps.push({ type:'HIGHLIGHT_CANDIDATES',
+      explanation:`${frontier.length} crossing edge(s) on the cut frontier. Scanning for minimum: ${frontier.slice(0,3).map(c=>`${c.edge.source}-${c.edge.target}(${c.edge.weight})`).join(', ')}${frontier.length>3?'...':''}`,
+      mstCost:cost, edgesSelected:mst.length, highlightedEdges:[], mstEdges:[...mst], rejectedEdges:[...rej], candidateEdges:candIds, activeNodes:[...visited], costDelta:0 });
 
-    const candidateIds = candidateEdges.map(c => c.edge.id);
+    frontier.sort((a, b) => a.edge.weight - b.edge.weight);
+    const best = frontier[0];
+    const prev = cost;
 
-    steps.push({
-      type: 'HIGHLIGHT_CANDIDATES',
-      explanation: `Found ${candidateEdges.length} candidate edge(s) crossing the cut (connecting visited to unvisited nodes). Evaluating to find the minimum weight edge.`,
-      mstCost,
-      edgesSelected: mstEdges.length,
-      highlightedEdges: [],
-      mstEdges: [...mstEdges],
-      rejectedEdges: [...rejectedEdges],
-      candidateEdges: candidateIds,
-      activeNodes: [...visited],
-    });
+    steps.push({ type:'CONSIDER_EDGE', edgeId:best.edge.id,
+      explanation:`Minimum crossing edge: ${best.edge.source}↔${best.edge.target} (${best.edge.weight}${u}). Cheapest way to expand the network.`,
+      mstCost:cost, edgesSelected:mst.length, highlightedEdges:[best.edge.id], mstEdges:[...mst], rejectedEdges:[...rej], candidateEdges:candIds.filter(id=>id!==best.edge.id), activeNodes:[...visited], costDelta:0 });
 
-    candidateEdges.sort((a, b) => a.edge.weight - b.edge.weight);
-    const best = candidateEdges[0];
-
-    steps.push({
-      type: 'CONSIDER_EDGE',
-      edgeId: best.edge.id,
-      explanation: `Considering edge ${best.edge.source} - ${best.edge.target} (weight: ${best.edge.weight}). This is the minimum weight edge crossing the cut.`,
-      mstCost,
-      edgesSelected: mstEdges.length,
-      highlightedEdges: [best.edge.id],
-      mstEdges: [...mstEdges],
-      rejectedEdges: [...rejectedEdges],
-      candidateEdges: candidateIds.filter(id => id !== best.edge.id),
-      activeNodes: [...visited],
-    });
-
-    visited.add(best.unvisitedNode);
-    mstEdges.push(best.edge.id);
-    mstCost += best.edge.weight;
-
-    steps.push({
-      type: 'ACCEPT_EDGE',
-      edgeId: best.edge.id,
-      nodeId: best.unvisitedNode,
-      explanation: `Accepted! Edge ${best.edge.source} - ${best.edge.target} (weight: ${best.edge.weight}) added to MST. Node ${best.unvisitedNode} is now visited. Total cost: ${mstCost}`,
-      mstCost,
-      edgesSelected: mstEdges.length,
-      highlightedEdges: [],
-      mstEdges: [...mstEdges],
-      rejectedEdges: [...rejectedEdges],
-      candidateEdges: [],
-      activeNodes: [...visited],
-    });
+    visited.add(best.newNode); mst.push(best.edge.id); cost += best.edge.weight;
+    steps.push({ type:'ACCEPT_EDGE', edgeId:best.edge.id, nodeId:best.newNode,
+      explanation:`✓ "${best.newNode}" joins via ${best.edge.source}↔${best.edge.target} (+${best.edge.weight}${u}). Total: ${prev} → ${cost}${u}`,
+      mstCost:cost, edgesSelected:mst.length, highlightedEdges:[], mstEdges:[...mst], rejectedEdges:[...rej], candidateEdges:[], activeNodes:[...visited], costDelta:best.edge.weight });
   }
 
-  steps.push({
-    type: 'COMPLETE',
-    explanation: `Prim's Algorithm complete! MST has ${mstEdges.length} edges with total cost ${mstCost}. All ${visited.size} nodes are connected.`,
-    mstCost,
-    edgesSelected: mstEdges.length,
-    highlightedEdges: [],
-    mstEdges: [...mstEdges],
-    rejectedEdges: [...rejectedEdges],
-    candidateEdges: [],
-    activeNodes: [...visited],
-  });
-
+  const total = graph.edges.reduce((s, e) => s + e.weight, 0);
+  steps.push({ type:'COMPLETE',
+    explanation:`🏆 Prim's complete! ${mst.length} links, cost ${cost}${u}. Saves ${total - cost}${u} vs full mesh (${total}${u}).`,
+    mstCost:cost, edgesSelected:mst.length, highlightedEdges:[], mstEdges:[...mst], rejectedEdges:[...rej], candidateEdges:[], activeNodes:[...visited], costDelta:0 });
   return steps;
 }

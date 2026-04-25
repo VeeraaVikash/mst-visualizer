@@ -1,89 +1,42 @@
 import type { Graph, AlgorithmStep } from '../types';
 import { UnionFind } from './unionFind';
 
-export function runKruskal(graph: Graph): AlgorithmStep[] {
+export function runKruskal(graph: Graph, unit = ''): AlgorithmStep[] {
   const steps: AlgorithmStep[] = [];
-  const nodeIds = graph.nodes.map(n => n.id);
-  const sortedEdges = [...graph.edges].sort((a, b) => a.weight - b.weight);
-  const uf = new UnionFind(nodeIds);
+  const ids = graph.nodes.map(n => n.id);
+  const sorted = [...graph.edges].sort((a, b) => a.weight - b.weight);
+  const uf = new UnionFind(ids);
+  const mst: string[] = [], rej: string[] = [];
+  let cost = 0;
+  const u = unit ? ` ${unit}` : '';
 
-  const mstEdges: string[] = [];
-  const rejectedEdges: string[] = [];
-  let mstCost = 0;
-  const targetEdges = nodeIds.length - 1;
+  steps.push({ type:'SORT_EDGES',
+    explanation:`Sorting ${sorted.length} edges by weight. Greedy strategy: always pick the cheapest edge that doesn't create a loop. Lightest: ${sorted[0]?.source}-${sorted[0]?.target} (${sorted[0]?.weight}${u}).`,
+    mstCost:0, edgesSelected:0, highlightedEdges:sorted.map(e=>e.id), mstEdges:[], rejectedEdges:[], candidateEdges:[], activeNodes:[], costDelta:0, ufState:uf.snapshot() });
 
-  steps.push({
-    type: 'SORT_EDGES',
-    explanation: `Kruskal's Algorithm: Sort all ${sortedEdges.length} edges by weight in ascending order. We will greedily pick the lightest edge that doesn't form a cycle.`,
-    mstCost: 0,
-    edgesSelected: 0,
-    highlightedEdges: sortedEdges.map(e => e.id),
-    mstEdges: [],
-    rejectedEdges: [],
-    candidateEdges: [],
-    activeNodes: [],
-  });
+  for (const e of sorted) {
+    if (mst.length >= ids.length - 1) break;
+    const prev = cost;
+    steps.push({ type:'CONSIDER_EDGE', edgeId:e.id,
+      explanation:`Evaluating ${e.source}↔${e.target} (cost: ${e.weight}${u}). Union-Find: are they already connected?`,
+      mstCost:cost, edgesSelected:mst.length, highlightedEdges:[e.id], mstEdges:[...mst], rejectedEdges:[...rej], candidateEdges:[], activeNodes:[e.source,e.target], costDelta:0, ufState:uf.snapshot() });
 
-  for (const edge of sortedEdges) {
-    if (mstEdges.length >= targetEdges) break;
-
-    steps.push({
-      type: 'CONSIDER_EDGE',
-      edgeId: edge.id,
-      explanation: `Considering edge ${edge.source} - ${edge.target} (weight: ${edge.weight}). Checking Union-Find: Are ${edge.source} and ${edge.target} in the same component?`,
-      mstCost,
-      edgesSelected: mstEdges.length,
-      highlightedEdges: [edge.id],
-      mstEdges: [...mstEdges],
-      rejectedEdges: [...rejectedEdges],
-      candidateEdges: [],
-      activeNodes: [edge.source, edge.target],
-    });
-
-    if (uf.connected(edge.source, edge.target)) {
-      rejectedEdges.push(edge.id);
-      steps.push({
-        type: 'REJECT_EDGE',
-        edgeId: edge.id,
-        explanation: `Rejected! ${edge.source} and ${edge.target} are already in the same component. Adding this edge would create a cycle.`,
-        mstCost,
-        edgesSelected: mstEdges.length,
-        highlightedEdges: [],
-        mstEdges: [...mstEdges],
-        rejectedEdges: [...rejectedEdges],
-        candidateEdges: [],
-        activeNodes: [],
-      });
+    if (uf.connected(e.source, e.target)) {
+      rej.push(e.id);
+      steps.push({ type:'REJECT_EDGE', edgeId:e.id,
+        explanation:`✗ Rejected. ${e.source} and ${e.target} share a component — this link would create a redundant loop.`,
+        mstCost:cost, edgesSelected:mst.length, highlightedEdges:[], mstEdges:[...mst], rejectedEdges:[...rej], candidateEdges:[], activeNodes:[], costDelta:0, ufState:uf.snapshot() });
     } else {
-      uf.union(edge.source, edge.target);
-      mstEdges.push(edge.id);
-      mstCost += edge.weight;
-      steps.push({
-        type: 'ACCEPT_EDGE',
-        edgeId: edge.id,
-        explanation: `Accepted! ${edge.source} and ${edge.target} are in different components. Edge added to MST. Cost: ${mstCost - edge.weight} + ${edge.weight} = ${mstCost}`,
-        mstCost,
-        edgesSelected: mstEdges.length,
-        highlightedEdges: [],
-        mstEdges: [...mstEdges],
-        rejectedEdges: [...rejectedEdges],
-        candidateEdges: [],
-        activeNodes: [edge.source, edge.target],
-      });
+      uf.union(e.source, e.target); mst.push(e.id); cost += e.weight;
+      steps.push({ type:'ACCEPT_EDGE', edgeId:e.id,
+        explanation:`✓ Accepted. Different components merged. Network cost: ${prev} + ${e.weight} = ${cost}${u}`,
+        mstCost:cost, edgesSelected:mst.length, highlightedEdges:[], mstEdges:[...mst], rejectedEdges:[...rej], candidateEdges:[], activeNodes:[e.source,e.target], costDelta:e.weight, ufState:uf.snapshot() });
     }
   }
 
-  steps.push({
-    type: 'COMPLETE',
-    explanation: `Kruskal's Algorithm complete! MST has ${mstEdges.length} edges with total cost ${mstCost}. The minimum spanning tree connects all ${nodeIds.length} nodes.`,
-    mstCost,
-    edgesSelected: mstEdges.length,
-    highlightedEdges: [],
-    mstEdges: [...mstEdges],
-    rejectedEdges: [...rejectedEdges],
-    candidateEdges: [],
-    activeNodes: nodeIds,
-  });
-
+  const total = graph.edges.reduce((s, e) => s + e.weight, 0);
+  steps.push({ type:'COMPLETE',
+    explanation:`🏆 Kruskal's complete! ${mst.length} links, cost ${cost}${u}. Saves ${total - cost}${u} vs full mesh (${total}${u}).`,
+    mstCost:cost, edgesSelected:mst.length, highlightedEdges:[], mstEdges:[...mst], rejectedEdges:[...rej], candidateEdges:[], activeNodes:ids, costDelta:0, ufState:uf.snapshot() });
   return steps;
 }

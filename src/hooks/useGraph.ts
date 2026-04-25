@@ -6,70 +6,71 @@ export function useGraph() {
   const [graph, setGraph] = useState<Graph>({ nodes: [], edges: [] });
   const [canvasMode, setCanvasMode] = useState<CanvasMode>('select');
   const [connectSource, setConnectSource] = useState<string | null>(null);
-  const edgeCounterRef = useRef(0);
+  const edgeCounter = useRef(0);
 
   const addNode = useCallback((x: number, y: number) => {
-    setGraph(prev => {
-      const label = generateNodeLabel(prev.nodes.length);
-      const node: GraphNode = { id: label, x, y };
-      return { ...prev, nodes: [...prev.nodes, node] };
+    setGraph(p => {
+      const id = generateNodeLabel(p.nodes.length);
+      const node: GraphNode = { id, x, y };
+      return { ...p, nodes: [...p.nodes, node] };
     });
   }, []);
 
   const updateNodePosition = useCallback((id: string, x: number, y: number) => {
-    setGraph(prev => ({
-      ...prev,
-      nodes: prev.nodes.map(n => (n.id === id ? { ...n, x, y } : n)),
-    }));
+    setGraph(p => ({ ...p, nodes: p.nodes.map(n => n.id === id ? { ...n, x, y } : n) }));
   }, []);
 
   const addEdge = useCallback((source: string, target: string, weight: number): string | null => {
     if (source === target) return 'Cannot connect a node to itself';
     if (edgeExists(graph.edges, source, target)) return `Edge ${source}-${target} already exists`;
-    if (weight < 1 || weight > 999 || !Number.isInteger(weight)) return 'Weight must be 1-999';
-
-    const id = `e${edgeCounterRef.current++}`;
+    if (!Number.isInteger(weight) || weight < 1 || weight > 9999) return 'Weight must be 1–9999';
+    const id = `e${edgeCounter.current++}`;
     const edge: GraphEdge = { id, source, target, weight };
-    setGraph(prev => ({ ...prev, edges: [...prev.edges, edge] }));
+    setGraph(p => ({ ...p, edges: [...p.edges, edge] }));
     return null;
   }, [graph.edges]);
+
+  const deleteNode = useCallback((id: string) => {
+    setGraph(p => ({ nodes: p.nodes.filter(n => n.id !== id), edges: p.edges.filter(e => e.source !== id && e.target !== id) }));
+  }, []);
+
+  const deleteEdge = useCallback((id: string) => {
+    setGraph(p => ({ ...p, edges: p.edges.filter(e => e.id !== id) }));
+  }, []);
+
+  const updateEdgeWeight = useCallback((id: string, weight: number) => {
+    setGraph(p => ({ ...p, edges: p.edges.map(e => e.id === id ? { ...e, weight } : e) }));
+  }, []);
 
   const resetGraph = useCallback(() => {
     setGraph({ nodes: [], edges: [] });
     setConnectSource(null);
-    edgeCounterRef.current = 0;
+    edgeCounter.current = 0;
   }, []);
 
   const loadGraph = useCallback((g: Graph) => {
     setGraph(g);
-    edgeCounterRef.current = g.edges.length;
+    edgeCounter.current = g.edges.length;
     setConnectSource(null);
   }, []);
 
-  const randomGraph = useCallback((count: number, canvasW: number, canvasH: number) => {
-    const g = generateRandomGraph(count, canvasW, canvasH);
+  const randomGraph = useCallback((count: number, w: number, h: number) => {
+    const g = generateRandomGraph(count, w, h);
     setGraph(g);
-    edgeCounterRef.current = g.edges.length;
+    edgeCounter.current = g.edges.length;
     setConnectSource(null);
   }, []);
 
   const toggleMode = useCallback((mode: CanvasMode) => {
-    setCanvasMode(prev => (prev === mode ? 'select' : mode));
+    setCanvasMode(p => p === mode ? 'select' : mode);
     setConnectSource(null);
   }, []);
 
   return {
-    graph,
-    canvasMode,
-    connectSource,
-    setConnectSource,
-    addNode,
-    updateNodePosition,
-    addEdge,
-    resetGraph,
-    loadGraph,
-    randomGraph,
-    toggleMode,
-    setCanvasMode,
+    graph, canvasMode, connectSource,
+    setConnectSource, setCanvasMode, setGraph,
+    addNode, updateNodePosition, addEdge, deleteNode, deleteEdge, updateEdgeWeight,
+    resetGraph, loadGraph, randomGraph, toggleMode,
+    setEdgeCounter: (n: number) => { edgeCounter.current = n; },
   };
 }

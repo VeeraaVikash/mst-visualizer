@@ -3,61 +3,30 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, AlertTriangle, Info, CheckCircle, X } from 'lucide-react';
 import type { ToastMessage } from '../../types';
 
-interface ToastProps {
-  toasts: ToastMessage[];
-  removeToast: (id: string) => void;
-}
+const ICON_MAP = { error: AlertCircle, warning: AlertTriangle, info: Info, success: CheckCircle };
+const COLOR_MAP = { error: 'var(--accent-reject)', warning: 'var(--accent-active)', info: 'var(--accent-candidate)', success: 'var(--accent-accept)' };
 
-const iconMap = {
-  error: AlertCircle,
-  warning: AlertTriangle,
-  info: Info,
-  success: CheckCircle,
-};
+interface Props { toasts: ToastMessage[]; removeToast: (id: string) => void; }
 
-const colorMap = {
-  error: 'var(--accent-reject)',
-  warning: 'var(--accent-active)',
-  info: 'var(--accent-candidate)',
-  success: 'var(--accent-accept)',
-};
-
-const Toast: React.FC<ToastProps> = ({ toasts, removeToast }) => {
+export default function Toast({ toasts, removeToast }: Props) {
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+    <div style={{ position: 'fixed', bottom: 80, right: 16, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 6 }}>
       <AnimatePresence mode="popLayout">
-        {toasts.map(toast => {
-          const Icon = iconMap[toast.icon];
+        {toasts.map(t => {
+          const Ic = ICON_MAP[t.icon];
+          const col = COLOR_MAP[t.icon];
           return (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, y: 30, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 60, scale: 0.9 }}
-              transition={{ duration: 0.25 }}
-              className="flex items-center gap-3 rounded-lg px-4 py-3 font-mono text-sm shadow-lg"
-              style={{
-                background: 'var(--bg-elevated)',
-                border: `1px solid ${colorMap[toast.icon]}`,
-                color: 'var(--text-primary)',
-                minWidth: 280,
-              }}
-            >
-              <Icon size={16} style={{ color: colorMap[toast.icon], flexShrink: 0 }} />
-              <span className="flex-1">{toast.message}</span>
-              <button
-                onClick={() => removeToast(toast.id)}
-                className="opacity-50 hover:opacity-100 transition-opacity"
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                <X size={14} />
-              </button>
+            <motion.div key={t.id} initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, x: 60 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderRadius: 10,
+                background: 'var(--bg-elevated)', border: `1px solid ${col}`, color: 'var(--text-primary)',
+                fontFamily: "'JetBrains Mono', monospace", fontSize: 12, minWidth: 240, boxShadow: 'var(--shadow)' }}>
+              <Ic size={14} style={{ color: col, flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>{t.message}</span>
+              <button onClick={() => removeToast(t.id)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={12} /></button>
             </motion.div>
           );
         })}
       </AnimatePresence>
     </div>
   );
-};
-
-export default Toast;
+}
