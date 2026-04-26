@@ -44,13 +44,14 @@ const Header: React.FC<HeaderProps> = ({
           <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, var(--accent-accept), var(--accent-candidate))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <GitGraph size={14} style={{ color: '#fff' }} />
           </div>
-          <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>Route D. Optimal</span>
+          <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--text-primary)', letterSpacing: '-0.3px', lineHeight: 1, display: 'flex', alignItems: 'center' }}>Route D. Optimal</span>
         </div>
 
         {isVisualizer && algorithmType && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8 }}>
             <span style={{
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 10, padding: '3px 8px', borderRadius: 6,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+              fontFamily: "'JetBrains Mono', monospace", fontSize: 10, padding: '4px 8px', borderRadius: 6,
               background: algorithmType === 'kruskal' ? 'color-mix(in srgb, var(--accent-accept) 15%, transparent)' : 'var(--bg-elevated)',
               color: algorithmType === 'kruskal' ? 'var(--accent-accept)' : 'var(--text-muted)',
               border: `1px solid ${algorithmType === 'kruskal' ? 'var(--accent-accept)' : 'var(--border)'}`,
@@ -59,7 +60,8 @@ const Header: React.FC<HeaderProps> = ({
               Kruskal's
             </span>
             <span style={{
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 10, padding: '3px 8px', borderRadius: 6,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+              fontFamily: "'JetBrains Mono', monospace", fontSize: 10, padding: '4px 8px', borderRadius: 6,
               background: algorithmType === 'prim' ? 'color-mix(in srgb, var(--accent-candidate) 15%, transparent)' : 'var(--bg-elevated)',
               color: algorithmType === 'prim' ? 'var(--accent-candidate)' : 'var(--text-muted)',
               border: `1px solid ${algorithmType === 'prim' ? 'var(--accent-candidate)' : 'var(--border)'}`,
@@ -68,7 +70,7 @@ const Header: React.FC<HeaderProps> = ({
               Prim's
             </span>
             {nodeCount > 0 && (
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-muted)' }}>
+              <span style={{ display: 'flex', alignItems: 'center', fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-muted)', lineHeight: 1 }}>
                 V={nodeCount} E={edgeCount}
               </span>
             )}

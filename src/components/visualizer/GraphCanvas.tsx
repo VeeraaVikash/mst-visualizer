@@ -383,11 +383,8 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
     const drag = d3.drag<SVGGElement, GNode>()
       .on('start', function() { d3.select(this).raise(); })
       .on('drag', function(ev, d) {
-        const el = containerRef.current;
-        if (!el) return;
-        const r = el.getBoundingClientRect();
-        const x = Math.max(30, Math.min(r.width - 30, ev.x));
-        const y = Math.max(30, Math.min(r.height - 30, ev.y));
+        const x = ev.x;
+        const y = ev.y;
         d3.select(this).attr('transform', `translate(${x},${y})`);
         onNodeDrag(d.id, x, y);
       });
@@ -451,7 +448,7 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
       hasFitted.current = true;
       return () => clearTimeout(timer);
     }
-  }, [autoFit, graph.nodes, fitView]);
+  }, [autoFit, graph.nodes.length, fitView]);
 
   const zoomBy = useCallback((factor: number) => {
     if (!zoomBehavior.current || !svgRef.current) return;
