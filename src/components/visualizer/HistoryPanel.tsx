@@ -44,41 +44,57 @@ export default function HistoryPanel({ steps, currentIdx, onJump, algoType, scen
           {algoType === 'kruskal' ? "Kruskal's" : "Prim's"} — {steps.length} steps
         </span>
       </div>
-      <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: '3px 0' }}>
+      <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {steps.map((s, i) => {
           const cfg = TYPE_CFG[s.type] ?? TYPE_CFG.CONSIDER_EDGE;
           const isCur = i === currentIdx;
+          const isPast = i < currentIdx;
+          
           return (
             <div key={i} onClick={() => onJump(i)}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 12px', cursor: 'pointer',
+              style={{ 
+                display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 12px', 
+                cursor: 'pointer', borderRadius: 8,
                 background: isCur ? 'var(--bg-elevated)' : 'transparent',
-                borderLeft: `2px solid ${isCur ? cfg.c : 'transparent'}`, transition: 'all 120ms' }}>
-              <div style={{ width: 20, height: 20, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                background: isCur ? `color-mix(in srgb, ${cfg.c} 18%, transparent)` : 'transparent' }}>
-                <cfg.I size={11} style={{ color: isCur ? cfg.c : 'var(--text-muted)' }} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0, padding: '2px 0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: isCur ? cfg.c : 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{cfg.label}</span>
-                  {s.edgeId && (
-                    <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-secondary)' }}>
-                      {s.edgeId.replace('e', 'Edge ')}
+                border: `1px solid ${isCur ? `color-mix(in srgb, ${cfg.c} 30%, transparent)` : 'var(--border)'}`,
+                boxShadow: isCur ? `0 2px 12px color-mix(in srgb, ${cfg.c} 12%, transparent)` : 'none',
+                opacity: isPast ? 0.8 : 1,
+                transform: isCur ? 'translateY(-1px)' : 'none',
+                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+              }}>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 26, height: 26, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  background: isCur ? `color-mix(in srgb, ${cfg.c} 15%, transparent)` : 'var(--bg-elevated)' }}>
+                  <cfg.I size={13} style={{ color: isCur ? cfg.c : 'var(--text-muted)' }} />
+                </div>
+                
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: isCur ? cfg.c : 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{cfg.label}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>
+                      #{String(i + 1).padStart(2, '0')}
                     </span>
-                  )}
-                  {s.nodeId && (
-                    <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-secondary)' }}>
-                      Node {s.nodeId}
+                  </div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
+                      color: s.type === 'ACCEPT_EDGE' ? 'var(--accent-accept)' : 'var(--text-muted)' }}>
+                      {s.type === 'ACCEPT_EDGE' ? `+${s.costDelta}${unit ? ' ' + unit : ''}` : `${s.mstCost}${unit ? ' ' + unit : ''}`}
                     </span>
-                  )}
-                  <span style={{ marginLeft: 'auto', fontSize: 11, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, fontWeight: 600,
-                    color: s.type === 'ACCEPT_EDGE' ? 'var(--accent-accept)' : 'var(--text-muted)' }}>
-                    {s.type === 'ACCEPT_EDGE' ? `+${s.costDelta}${unit ? ' ' + unit : ''}` : `${s.mstCost}${unit ? ' ' + unit : ''}`}
-                  </span>
+                  </div>
                 </div>
               </div>
-              <span style={{ fontSize: 9, color: 'var(--text-muted)', flexShrink: 0, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>
-                {String(i + 1).padStart(2, '0')}
-              </span>
+              
+              {(s.edgeId || s.nodeId) && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 36, marginTop: 2 }}>
+                  <div style={{ padding: '2px 6px', background: 'var(--bg-base)', borderRadius: 4, border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center' }}>
+                    <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-secondary)' }}>
+                      {s.edgeId ? s.edgeId.replace('e', 'Edge ') : `Node ${s.nodeId}`}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
