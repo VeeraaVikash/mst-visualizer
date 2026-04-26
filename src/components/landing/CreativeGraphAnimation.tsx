@@ -79,13 +79,25 @@ const CreativeGraphAnimation: React.FC = () => {
                 strokeWidth={1.5}
                 opacity={0.3}
               />
+              <rect
+                x={(s.x + t.x) / 2 - 12}
+                y={(s.y + t.y) / 2 - 8}
+                width={24}
+                height={16}
+                rx={4}
+                fill="var(--bg-panel)"
+                stroke="var(--border)"
+                strokeWidth={0.5}
+                opacity={0.9}
+              />
               <text
                 x={(s.x + t.x) / 2}
-                y={(s.y + t.y) / 2 - 5}
+                y={(s.y + t.y) / 2 + 3}
                 textAnchor="middle"
-                fill="var(--text-muted)"
+                fill="var(--text-secondary)"
                 fontSize="10"
-                fontFamily="JetBrains Mono"
+                fontFamily="'JetBrains Mono', monospace"
+                fontWeight="600"
               >
                 {edge.weight}
               </text>

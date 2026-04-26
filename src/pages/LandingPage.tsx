@@ -61,7 +61,8 @@ export default function LandingPage({ theme, setTheme }: Props) {
         overflowX: 'hidden', 
         background: 'var(--bg-base)',
         position: 'relative',
-        scrollBehavior: 'smooth'
+        scrollBehavior: 'smooth',
+        userSelect: 'none'
       }}
     >
       <ParticleBackground />

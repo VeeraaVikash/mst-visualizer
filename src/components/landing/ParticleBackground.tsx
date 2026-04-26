@@ -13,9 +13,13 @@ const ParticleBackground: React.FC = () => {
     let animationFrameId: number;
     let particles: Particle[] = [];
 
+    let cachedAccent = '#10b981';
+    
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
+      const style = getComputedStyle(document.body);
+      cachedAccent = style.getPropertyValue('--accent-accept').trim() || '#10b981';
       initParticles();
     };
 
@@ -46,9 +50,7 @@ const ParticleBackground: React.FC = () => {
         if (!ctx) return;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        const style = getComputedStyle(document.body);
-        const accent = style.getPropertyValue('--accent-accept').trim() || '#10b981';
-        ctx.fillStyle = `color-mix(in srgb, ${accent} 40%, transparent)`;
+        ctx.fillStyle = `color-mix(in srgb, ${cachedAccent} 40%, transparent)`;
         ctx.fill();
       }
     }
@@ -75,10 +77,8 @@ const ParticleBackground: React.FC = () => {
 
           if (distance < 120) {
             ctx.beginPath();
-            const style = getComputedStyle(document.body);
-            const accent = style.getPropertyValue('--accent-accept').trim() || '#10b981';
             const opacity = 1 - distance / 120;
-            ctx.strokeStyle = `color-mix(in srgb, ${accent} ${opacity * 20}%, transparent)`;
+            ctx.strokeStyle = `color-mix(in srgb, ${cachedAccent} ${opacity * 20}%, transparent)`;
             ctx.lineWidth = 0.5;
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
