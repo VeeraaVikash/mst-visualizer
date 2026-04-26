@@ -1,6 +1,7 @@
 import type { Graph, AlgorithmStep } from '../types';
 
 export function runPrim(graph: Graph, startId: string, unit = ''): AlgorithmStep[] {
+  const t0 = performance.now();
   const steps: AlgorithmStep[] = [];
   const ids = graph.nodes.map(n => n.id);
   const visited = new Set([startId]);
@@ -41,8 +42,9 @@ export function runPrim(graph: Graph, startId: string, unit = ''): AlgorithmStep
   }
 
   const total = graph.edges.reduce((s, e) => s + e.weight, 0);
+  const timeTakenMs = performance.now() - t0;
   steps.push({ type:'COMPLETE',
     explanation:`**Algorithm Complete!** Prim's successfully found the Minimum Spanning Tree. We secured {${mst.length}} links for a total minimum cost of {${cost}${u}}, saving {${total - cost}${u}} over a fully meshed network.`,
-    mstCost:cost, edgesSelected:mst.length, highlightedEdges:[], mstEdges:[...mst], rejectedEdges:[...rej], candidateEdges:[], activeNodes:[...visited], costDelta:0 });
+    mstCost:cost, edgesSelected:mst.length, highlightedEdges:[], mstEdges:[...mst], rejectedEdges:[...rej], candidateEdges:[], activeNodes:[...visited], costDelta:0, timeTakenMs });
   return steps;
 }

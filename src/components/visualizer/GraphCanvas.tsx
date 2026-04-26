@@ -14,9 +14,10 @@ interface Props {
   onNodeDrag: (id: string, x: number, y: number) => void;
   onEdgeAction: (edge: GEdge, action: 'edit' | 'delete') => void;
   isComplete: boolean;
+  scenario?: string;
 }
 
-export default function GraphCanvas({ graph, step, canvasMode, deleteMode, connectSource, onBgClick, onNodeClick, onNodeDrag, onEdgeAction, isComplete }: Props) {
+export default function GraphCanvas({ graph, step, canvasMode, deleteMode, connectSource, onBgClick, onNodeClick, onNodeDrag, onEdgeAction, isComplete, scenario }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const mainGRef = useRef<SVGGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -32,7 +33,7 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
       .join(
         enter => {
           const grp = enter.append('g').attr('class', 'gf-edge');
-          grp.append('line').attr('class', 'gf-eline');
+          grp.append('path').attr('class', 'gf-eline').attr('fill', 'none');
           grp.append('rect').attr('class', 'gf-ebg');
           grp.append('text').attr('class', 'gf-ewt');
           return grp;
@@ -40,6 +41,21 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
         update => update,
         exit => exit.remove()
       );
+
+    // Build a map to detect parallel edges (multiple edges between same node pair)
+    const pairCount: Record<string, number> = {};
+    const pairIndex: Record<string, number> = {};
+    graph.edges.forEach(e => {
+      const key = [e.source, e.target].sort().join('::');
+      pairCount[key] = (pairCount[key] || 0) + 1;
+    });
+    // Assign index within each pair group
+    const pairCursor: Record<string, number> = {};
+    graph.edges.forEach(e => {
+      const key = [e.source, e.target].sort().join('::');
+      pairCursor[key] = (pairCursor[key] || 0);
+      pairIndex[e.id] = pairCursor[key]++;
+    });
 
     edgeGroups.each(function(d) {
       const grp = d3.select(this);
@@ -64,42 +80,56 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
       };
       const [stroke, sw, flt, da] = stMap[state] ?? stMap.default;
 
-      const line = grp.select<SVGLineElement>('.gf-eline');
-      
-      // Update coordinates immediately to prevent lag during node drag
-      line.attr('x1', s.x).attr('y1', s.y).attr('x2', t.x).attr('y2', t.y);
-      
-      // Only transition styling
-      line.transition().duration(280)
+      const path = grp.select<SVGPathElement>('.gf-eline');
+
+      // Determine if this edge needs curvature (only for parallel edges)
+      const pairKey = [d.source, d.target].sort().join('::');
+      const count = pairCount[pairKey] || 1;
+      const idx = pairIndex[d.id] || 0;
+
+      let labelX: number, labelY: number;
+
+      if (count > 1) {
+        // Parallel edges: offset each one with a curve
+        const dx = t.x - s.x;
+        const dy = t.y - s.y;
+        const offset = (idx - (count - 1) / 2) * 0.2;
+        const midX = (s.x + t.x) / 2 - dy * offset;
+        const midY = (s.y + t.y) / 2 + dx * offset;
+        path.attr('d', `M${s.x},${s.y} Q${midX},${midY} ${t.x},${t.y}`);
+        labelX = 0.25 * s.x + 0.5 * midX + 0.25 * t.x;
+        labelY = 0.25 * s.y + 0.5 * midY + 0.25 * t.y;
+      } else {
+        // Single edge: clean straight line
+        path.attr('d', `M${s.x},${s.y} L${t.x},${t.y}`);
+        labelX = (s.x + t.x) / 2;
+        labelY = (s.y + t.y) / 2;
+      }
+
+      path.transition().duration(280)
         .attr('stroke', stroke).attr('stroke-width', sw)
         .attr('filter', flt).attr('stroke-dasharray', da);
 
-      if (state === 'candidate' || state === 'accepted') line.classed('edge-animated', true);
-      else line.classed('edge-animated', false);
+      if (state === 'candidate' || state === 'accepted') path.classed('edge-animated', true);
+      else path.classed('edge-animated', false);
 
-      const mx = (s.x + t.x) / 2, my = (s.y + t.y) / 2;
+      // Weight badge at edge midpoint
       const tw = String(d.weight).length * 7 + 12;
+
       grp.select('.gf-ebg')
-        .attr('x', mx - tw / 2).attr('y', my - 10).attr('width', tw).attr('height', 18)
+        .attr('x', labelX - tw / 2).attr('y', labelY - 10).attr('width', tw).attr('height', 18)
         .attr('rx', 4).attr('fill', 'var(--bg-panel)').attr('stroke', 'var(--border)').attr('stroke-width', 1)
         .style('cursor', deleteMode ? 'crosshair' : 'pointer');
       grp.select('.gf-ewt')
-        .attr('x', mx).attr('y', my + 3).attr('text-anchor', 'middle')
+        .attr('x', labelX).attr('y', labelY + 3).attr('text-anchor', 'middle')
         .attr('font-family', 'JetBrains Mono').attr('font-size', 10)
         .attr('fill', state !== 'default' ? stroke : 'var(--text-secondary)')
         .attr('pointer-events', 'none')
         .text(d.weight);
 
-      // Edge click/dblclick
       grp.select('.gf-ebg')
-        .on('click', (ev: Event) => {
-          ev.stopPropagation();
-          if (deleteMode) onEdgeAction(d, 'delete');
-        })
-        .on('dblclick', (ev: Event) => {
-          ev.stopPropagation();
-          if (!deleteMode) onEdgeAction(d, 'edit');
-        });
+        .on('click', (ev: Event) => { ev.stopPropagation(); if (deleteMode) onEdgeAction(d, 'delete'); })
+        .on('dblclick', (ev: Event) => { ev.stopPropagation(); if (!deleteMode) onEdgeAction(d, 'edit'); });
     });
 
     // NODES
@@ -108,8 +138,15 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
       .join(
         enter => {
           const grp = enter.append('g').attr('class', 'gf-node');
-          grp.append('circle').attr('class', 'gf-ncirc');
-          grp.append('text').attr('class', 'gf-nlbl');
+          grp.append('foreignObject')
+            .attr('class', 'gf-nfo')
+            .attr('width', 100).attr('height', 100)
+            .attr('x', -50).attr('y', -50)
+            .style('overflow', 'visible')
+            .style('pointer-events', 'none')
+            .append('xhtml:div').attr('class', 'gf-ndiv')
+            .style('width', '100%').style('height', '100%')
+            .style('position', 'relative');
           return grp;
         },
         update => update,
@@ -121,29 +158,32 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
       const isActive = step?.activeNodes?.includes(d.id) ?? false;
       const isSrc = connectSource === d.id;
 
-      let sc = 'var(--accent-default)', sw = 2, flt = 'none';
-      if (deleteMode) { sc = 'var(--accent-reject)'; sw = 2; flt = 'drop-shadow(0 0 4px var(--accent-reject))'; }
-      else if (isSrc) { sc = 'var(--accent-active)'; sw = 3; flt = 'drop-shadow(0 0 10px var(--glow-active))'; }
-      else if (isActive) { sc = 'var(--accent-accept)'; sw = 2.5; flt = 'drop-shadow(0 0 8px var(--glow-accept))'; }
-      if (isComplete && isActive) flt = 'drop-shadow(0 0 16px var(--glow-accept))';
-
-      grp.attr('transform', `translate(${d.x},${d.y})`).style('cursor', deleteMode ? 'crosshair' : connectSource ? 'cell' : 'pointer');
+      let classes = `node-modern ${scenario || 'telecom'}`;
+      if (deleteMode) classes += ' delete';
+      else if (isSrc) classes += ' source';
+      else if (isActive) classes += ' active';
       
-      const circle = grp.select('.gf-ncirc');
-      circle.transition().duration(280)
-        .attr('r', isActive ? 28 : 24).attr('fill', 'var(--bg-elevated)')
-        .attr('stroke', sc).attr('stroke-width', sw).attr('filter', flt);
-        
-      if (isActive && !isComplete) circle.classed('pulse', true);
-      else circle.classed('pulse', false);
+      // Keep pulsing logic via css or simple style
+      if (isActive && !isComplete) classes += ' pulse';
 
-      grp.select('.gf-nlbl')
-        .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle')
-        .attr('font-family', 'JetBrains Mono').attr('font-size', d.id.length > 2 ? 9 : 12)
-        .attr('font-weight', 600).attr('fill', 'var(--text-primary)').attr('pointer-events', 'none')
-        .text(d.id);
+      grp.attr('transform', `translate(${d.x},${d.y})`);
+      
+      // Use foreignObject div for HTML styling
+      const div = grp.select('.gf-ndiv');
+      div.html(`
+        <div class="${classes}">
+          <span class="n-label">${d.id}</span>
+        </div>
+      `);
 
-      grp.on('click', (ev: Event) => { ev.stopPropagation(); onNodeClick(d.id); });
+      // Add invisible hit circle for precise d3 dragging and clicking over the fo
+      let hit = grp.select<SVGCircleElement>('.gf-nhit');
+      if (hit.empty()) {
+        hit = grp.append('circle').attr('class', 'gf-nhit').attr('r', 25).attr('fill', 'transparent')
+          .style('cursor', 'pointer');
+      }
+      hit.style('cursor', deleteMode ? 'crosshair' : connectSource ? 'cell' : 'pointer')
+        .on('click', (ev: Event) => { ev.stopPropagation(); onNodeClick(d.id); });
     });
 
     // Drag (select mode only)
@@ -164,7 +204,7 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
     } else {
       nodeGroups.on('.drag', null);
     }
-  }, [graph, step, canvasMode, deleteMode, connectSource, isComplete, onNodeClick, onNodeDrag, onEdgeAction]);
+  }, [graph, step, canvasMode, deleteMode, connectSource, isComplete, scenario, onNodeClick, onNodeDrag, onEdgeAction]);
 
   // Setup zoom + bg click (once)
   useEffect(() => {

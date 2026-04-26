@@ -11,12 +11,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "d3": "^7.9.0",
+    "framer-motion": "^11.3.0",
+    "graphology": "^0.26.0",
+    "graphology-layout": "^0.6.1",
+    "graphology-layout-forceatlas2": "^0.10.1",
+    "graphology-layout-noverlap": "^0.4.2",
+    "lucide-react": "^0.436.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.0",
-    "framer-motion": "^11.3.0",
-    "d3": "^7.9.0",
-    "lucide-react": "^0.436.0"
+    "react-router-dom": "^6.26.0"
   },
   "devDependencies": {
     "@types/d3": "^7.4.3",

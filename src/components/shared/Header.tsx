@@ -109,7 +109,7 @@ const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        <ThemeToggle theme={theme} setSpecificTheme={setSpecificTheme} />
+        <ThemeToggle theme={theme} setTheme={setSpecificTheme} />
 
         {isVisualizer && onShowHelp && (
           <button

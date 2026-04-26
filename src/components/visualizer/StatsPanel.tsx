@@ -51,6 +51,14 @@ export default function StatsPanel({ graph, steps, currentIdx, algoType, scenari
         <StatCard label="Nodes Covered" value={step?.activeNodes?.length ?? 0} sub={`of ${n} total`} />
       </div>
 
+      <div style={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>Algorithm Analysis</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginBottom: 12 }}>
+        <StatCard label="Time Complexity" value={algoType === 'kruskal' ? 'O(E log E)' : 'O(E log V)'} sub="Worst case" />
+        <StatCard label="Space Complexity" value="O(V + E)" sub="Memory used" />
+        <StatCard label="Exec Time" value={steps[steps.length - 1]?.timeTakenMs !== undefined ? `${steps[steps.length - 1].timeTakenMs!.toFixed(2)}ms` : '-'} sub="JS engine time" />
+        <StatCard label="Total Steps" value={steps.length} sub="Animation frames" />
+      </div>
+
       {mstCost > 0 && (
         <>
           <div style={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 6 }}>Cost Efficiency</div>

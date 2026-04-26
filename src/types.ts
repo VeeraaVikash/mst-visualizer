@@ -14,6 +14,7 @@ export interface AlgorithmStep {
   mstCost: number; edgesSelected: number; highlightedEdges: string[];
   mstEdges: string[]; rejectedEdges: string[]; candidateEdges: string[];
   activeNodes: string[]; costDelta: number; ufState?: Record<string,string>;
+  timeTakenMs?: number;
 }
 
 export interface ToastMessage { id: string; message: string; icon: 'error'|'warning'|'info'|'success'; }

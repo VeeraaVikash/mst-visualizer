@@ -7,6 +7,7 @@ import { runKruskal } from '../algorithms/kruskal';
 import { runPrim } from '../algorithms/prim';
 import { isGraphConnected } from '../utils/graphUtils';
 import { SCENARIOS } from '../data/scenarios';
+import { LayoutManager } from '../services/LayoutManager';
 import ThemeToggle from '../components/shared/ThemeToggle';
 import Toast from '../components/shared/Toast';
 import GraphCanvas from '../components/visualizer/GraphCanvas';
@@ -57,8 +58,14 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
   useEffect(() => {
     const sc = SCENARIOS[scenario];
     if (sc) {
+      const el = canvasContRef.current;
+      const w = el?.clientWidth ?? 800;
+      const h = el?.clientHeight ?? 600;
+      
       const g = { nodes: [...sc.graph.nodes], edges: [...sc.graph.edges] };
-      loadGraph(g);
+      const layoutGraph = LayoutManager.applyLayout(g, sc.layoutType, w, h);
+      
+      loadGraph(layoutGraph);
       setEdgeCounter(sc.graph.edges.length);
       resetAlgo();
       setDeleteMode(false);
@@ -315,7 +322,7 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
                   </div>
                 )}
                 
-                <GraphCanvas graph={graph} step={raceIdx >= 0 ? kSteps[Math.min(raceIdx, kSteps.length - 1)] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={() => {}} onEdgeAction={() => {}} isComplete={kSteps[Math.min(raceIdx, kSteps.length - 1)]?.type === 'COMPLETE'} />
+                <GraphCanvas graph={graph} step={raceIdx >= 0 ? kSteps[Math.min(raceIdx, kSteps.length - 1)] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={() => {}} onEdgeAction={() => {}} isComplete={kSteps[Math.min(raceIdx, kSteps.length - 1)]?.type === 'COMPLETE'} scenario={scenario} />
                 
                 {raceIdx >= 0 && <ExplanationBar currentStep={kSteps[Math.min(raceIdx, kSteps.length - 1)]} stepIndex={Math.min(raceIdx, kSteps.length - 1)} />}
               </div>
@@ -335,7 +342,7 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
                   </div>
                 )}
                 
-                <GraphCanvas graph={graph} step={raceIdx >= 0 ? pSteps[Math.min(raceIdx, pSteps.length - 1)] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={() => {}} onEdgeAction={() => {}} isComplete={pSteps[Math.min(raceIdx, pSteps.length - 1)]?.type === 'COMPLETE'} />
+                <GraphCanvas graph={graph} step={raceIdx >= 0 ? pSteps[Math.min(raceIdx, pSteps.length - 1)] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={() => {}} onEdgeAction={() => {}} isComplete={pSteps[Math.min(raceIdx, pSteps.length - 1)]?.type === 'COMPLETE'} scenario={scenario} />
                 
                 {raceIdx >= 0 && <ExplanationBar currentStep={pSteps[Math.min(raceIdx, pSteps.length - 1)]} stepIndex={Math.min(raceIdx, pSteps.length - 1)} />}
               </div>
@@ -345,7 +352,7 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
               graph={graph} step={curStep} canvasMode={canvasMode} deleteMode={deleteMode}
               connectSource={connectSource} onBgClick={handleBgClick} onNodeClick={handleNodeClick}
               onNodeDrag={updateNodePosition} onEdgeAction={handleEdgeAction}
-              isComplete={curStep?.type === 'COMPLETE'}
+              isComplete={curStep?.type === 'COMPLETE'} scenario={scenario}
             />
           )}
 

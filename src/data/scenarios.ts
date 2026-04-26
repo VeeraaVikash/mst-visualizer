@@ -3,73 +3,82 @@ import type { Graph } from '../types';
 export interface Scenario {
   id: string; label: string; tagline: string; unit: string;
   unitFull: string; color: string; description: string; graph: Graph;
+  layoutType: 'force' | 'hierarchical' | 'geographic';
 }
 
 export const SCENARIOS: Record<string, Scenario> = {
   telecom: {
-    id:'telecom', label:'Telecom Network', tagline:'Connect cities with minimum fiber cable',
+    id:'telecom', label:'Global Internet Backbone', tagline:'Connect major global cities with minimum submarine cable',
     unit:'km', unitFull:'kilometers of cable', color:'#48bb78',
-    description:'Design a fiber-optic backbone connecting cities. The MST finds the minimum total cable required to ensure full connectivity.',
+    description:'Design a submarine fiber-optic backbone connecting global hubs. The MST finds the minimum total cable required to ensure global connectivity.',
+    layoutType: 'geographic',
     graph:{
-      nodes:[{id:'NYC',x:520,y:130},{id:'BOS',x:620,y:90},{id:'PHI',x:490,y:200},{id:'DC',x:460,y:270},{id:'ATL',x:430,y:400},{id:'CHI',x:260,y:160},{id:'DET',x:310,y:190},{id:'CLV',x:350,y:200},{id:'PIT',x:400,y:240}],
+      nodes:[{id:'SFO',x:80,y:180},{id:'NYC',x:260,y:160},{id:'LON',x:440,y:140},{id:'PAR',x:460,y:180},{id:'FRA',x:500,y:150},{id:'DXB',x:580,y:260},{id:'BOM',x:660,y:280},{id:'SIN',x:740,y:340},{id:'TYO',x:820,y:200},{id:'SYD',x:840,y:420}],
       edges:[
-        {id:'e0',source:'NYC',target:'BOS',weight:350},{id:'e1',source:'NYC',target:'PHI',weight:151},
-        {id:'e2',source:'PHI',target:'DC',weight:225},{id:'e3',source:'DC',target:'ATL',weight:1092},
-        {id:'e4',source:'NYC',target:'CHI',weight:1272},{id:'e5',source:'CHI',target:'DET',weight:459},
-        {id:'e6',source:'DET',target:'CLV',weight:169},{id:'e7',source:'CLV',target:'PIT',weight:187},
-        {id:'e8',source:'PIT',target:'PHI',weight:445},{id:'e9',source:'PIT',target:'DC',weight:360},
-        {id:'e10',source:'CHI',target:'CLV',weight:540},{id:'e11',source:'ATL',target:'PIT',weight:1100},
-        {id:'e12',source:'NYC',target:'CLV',weight:790},{id:'e13',source:'BOS',target:'PHI',weight:450}
+        {id:'e0',source:'SFO',target:'NYC',weight:4130},{id:'e1',source:'NYC',target:'LON',weight:5560},
+        {id:'e2',source:'LON',target:'PAR',weight:340},{id:'e3',source:'LON',target:'FRA',weight:630},
+        {id:'e4',source:'PAR',target:'FRA',weight:480},{id:'e5',source:'FRA',target:'DXB',weight:4840},
+        {id:'e6',source:'DXB',target:'BOM',weight:1920},{id:'e7',source:'BOM',target:'SIN',weight:3900},
+        {id:'e8',source:'SIN',target:'TYO',weight:5300},{id:'e9',source:'SIN',target:'SYD',weight:6300},
+        {id:'e10',source:'SFO',target:'TYO',weight:8280},{id:'e11',source:'NYC',target:'FRA',weight:6200},
+        {id:'e12',source:'PAR',target:'DXB',weight:5200},{id:'e13',source:'TYO',target:'SYD',weight:7800}
       ]
     }
   },
   power: {
-    id:'power', label:'Power Grid', tagline:'Minimize transmission line cost',
-    unit:'MW·km', unitFull:'megawatt-kilometers', color:'#f6ad55',
-    description:'Build high-voltage transmission lines between power stations. Minimize total infrastructure while ensuring full grid connectivity.',
+    id:'power', label:'Regional Power Grid', tagline:'Minimize high-voltage transmission lines',
+    unit:'mi', unitFull:'miles of line', color:'#f6ad55',
+    description:'Build high-voltage transmission lines between power stations and substations. Minimize total infrastructure while ensuring grid stability.',
+    layoutType: 'force',
     graph:{
-      nodes:[{id:'PS1',x:150,y:150},{id:'PS2',x:550,y:120},{id:'S1',x:280,y:200},{id:'S2',x:420,y:180},{id:'S3',x:200,y:350},{id:'S4',x:480,y:340},{id:'C1',x:330,y:290},{id:'C2',x:120,y:440}],
+      nodes:[{id:'Plant-N',x:350,y:80},{id:'Plant-S',x:400,y:400},{id:'Sub-A',x:200,y:180},{id:'Sub-B',x:500,y:160},{id:'Sub-C',x:250,y:300},{id:'Sub-D',x:550,y:280},{id:'City-1',x:350,y:220},{id:'City-2',x:450,y:340}],
       edges:[
-        {id:'e0',source:'PS1',target:'S1',weight:12},{id:'e1',source:'PS2',target:'S2',weight:8},
-        {id:'e2',source:'S1',target:'S2',weight:18},{id:'e3',source:'S1',target:'C1',weight:9},
-        {id:'e4',source:'S2',target:'C1',weight:11},{id:'e5',source:'S1',target:'S3',weight:21},
-        {id:'e6',source:'C1',target:'S3',weight:14},{id:'e7',source:'C1',target:'S4',weight:16},
-        {id:'e8',source:'S2',target:'S4',weight:13},{id:'e9',source:'S3',target:'C2',weight:7},
-        {id:'e10',source:'S3',target:'S4',weight:25},{id:'e11',source:'PS1',target:'C2',weight:19}
+        {id:'e0',source:'Plant-N',target:'Sub-A',weight:120},{id:'e1',source:'Plant-N',target:'Sub-B',weight:140},
+        {id:'e2',source:'Plant-N',target:'City-1',weight:100},{id:'e3',source:'Sub-A',target:'City-1',weight:80},
+        {id:'e4',source:'Sub-B',target:'City-1',weight:95},{id:'e5',source:'Sub-A',target:'Sub-C',weight:110},
+        {id:'e6',source:'Sub-C',target:'City-1',weight:70},{id:'e7',source:'Sub-B',target:'Sub-D',weight:105},
+        {id:'e8',source:'Sub-D',target:'City-1',weight:130},{id:'e9',source:'Plant-S',target:'Sub-C',weight:160},
+        {id:'e10',source:'Plant-S',target:'Sub-D',weight:170},{id:'e11',source:'Plant-S',target:'City-2',weight:50},
+        {id:'e12',source:'City-1',target:'City-2',weight:90},{id:'e13',source:'Sub-C',target:'City-2',weight:85},
+        {id:'e14',source:'Sub-D',target:'City-2',weight:95}
       ]
     }
   },
   roads: {
-    id:'roads', label:'Road Network', tagline:'Build minimum-cost road infrastructure',
-    unit:'km', unitFull:'kilometers of road', color:'#63b3ed',
-    description:'Plan road construction between settlements. Connect all communities with minimum total road distance.',
+    id:'roads', label:'European Rail Network', tagline:'Build minimum-cost rail infrastructure',
+    unit:'km', unitFull:'kilometers of rail', color:'#63b3ed',
+    description:'Plan high-speed rail construction between European capitals. Connect all cities with minimum total track distance.',
+    layoutType: 'geographic',
     graph:{
-      nodes:[{id:'A',x:180,y:120},{id:'B',x:380,y:100},{id:'C',x:540,y:180},{id:'D',x:280,y:240},{id:'E',x:460,y:300},{id:'F',x:150,y:350},{id:'G',x:380,y:400},{id:'H',x:560,y:430}],
+      nodes:[{id:'LON',x:250,y:140},{id:'PAR',x:320,y:260},{id:'BRU',x:350,y:180},{id:'AMS',x:380,y:120},{id:'BER',x:520,y:160},{id:'MUN',x:480,y:280},{id:'MIL',x:450,y:380},{id:'ROM',x:520,y:480},{id:'MAD',x:120,y:420},{id:'BCN',x:240,y:400}],
       edges:[
-        {id:'e0',source:'A',target:'B',weight:7},{id:'e1',source:'B',target:'C',weight:8},
-        {id:'e2',source:'A',target:'D',weight:5},{id:'e3',source:'B',target:'D',weight:9},
-        {id:'e4',source:'C',target:'E',weight:6},{id:'e5',source:'D',target:'E',weight:15},
-        {id:'e6',source:'D',target:'F',weight:6},{id:'e7',source:'E',target:'G',weight:11},
-        {id:'e8',source:'F',target:'G',weight:4},{id:'e9',source:'G',target:'H',weight:5},
-        {id:'e10',source:'E',target:'H',weight:9},{id:'e11',source:'A',target:'F',weight:10},
-        {id:'e12',source:'B',target:'E',weight:13}
+        {id:'e0',source:'LON',target:'PAR',weight:460},{id:'e1',source:'LON',target:'BRU',weight:370},
+        {id:'e2',source:'LON',target:'AMS',weight:500},{id:'e3',source:'PAR',target:'BRU',weight:310},
+        {id:'e4',source:'BRU',target:'AMS',weight:210},{id:'e5',source:'AMS',target:'BER',weight:650},
+        {id:'e6',source:'BRU',target:'BER',weight:760},{id:'e7',source:'PAR',target:'MUN',weight:830},
+        {id:'e8',source:'BER',target:'MUN',weight:580},{id:'e9',source:'MUN',target:'MIL',weight:490},
+        {id:'e10',source:'PAR',target:'MIL',weight:850},{id:'e11',source:'MIL',target:'ROM',weight:570},
+        {id:'e12',source:'PAR',target:'MAD',weight:1270},{id:'e13',source:'MAD',target:'BCN',weight:620},
+        {id:'e14',source:'BCN',target:'PAR',weight:1030},{id:'e15',source:'BCN',target:'MIL',weight:980}
       ]
     }
   },
   datacenter: {
-    id:'datacenter', label:'Data Center Mesh', tagline:'Minimize network latency & cost',
-    unit:'ms', unitFull:'milliseconds latency', color:'#fc8181',
-    description:'Connect data center nodes with minimum-latency links. The MST builds the optimal low-latency backbone.',
+    id:'datacenter', label:'Spine-Leaf Topology', tagline:'Minimize network latency & cable cost',
+    unit:'m', unitFull:'meters of cable', color:'#fc8181',
+    description:'Connect datacenter racks using a spine-leaf architecture. Find the minimum spanning tree to optimize cabling and ensure low latency.',
+    layoutType: 'hierarchical',
     graph:{
-      nodes:[{id:'DC-A',x:160,y:160},{id:'DC-B',x:500,y:140},{id:'DC-C',x:340,y:130},{id:'CDN1',x:200,y:320},{id:'CDN2',x:470,y:330},{id:'EDGE1',x:120,y:440},{id:'EDGE2',x:580,y:430},{id:'HUB',x:330,y:280}],
+      nodes:[{id:'SPINE-1',x:300,y:100},{id:'SPINE-2',x:500,y:100},{id:'LEAF-1',x:200,y:220},{id:'LEAF-2',x:400,y:220},{id:'LEAF-3',x:600,y:220},{id:'RACK-A',x:150,y:350},{id:'RACK-B',x:250,y:350},{id:'RACK-C',x:350,y:350},{id:'RACK-D',x:450,y:350},{id:'RACK-E',x:550,y:350},{id:'RACK-F',x:650,y:350}],
       edges:[
-        {id:'e0',source:'DC-A',target:'DC-C',weight:4},{id:'e1',source:'DC-C',target:'DC-B',weight:6},
-        {id:'e2',source:'DC-A',target:'CDN1',weight:8},{id:'e3',source:'DC-B',target:'CDN2',weight:5},
-        {id:'e4',source:'DC-C',target:'HUB',weight:3},{id:'e5',source:'HUB',target:'CDN1',weight:7},
-        {id:'e6',source:'HUB',target:'CDN2',weight:6},{id:'e7',source:'CDN1',target:'EDGE1',weight:4},
-        {id:'e8',source:'CDN2',target:'EDGE2',weight:5},{id:'e9',source:'HUB',target:'EDGE1',weight:11},
-        {id:'e10',source:'HUB',target:'EDGE2',weight:9},{id:'e11',source:'DC-A',target:'HUB',weight:12},
-        {id:'e12',source:'DC-B',target:'HUB',weight:10}
+        {id:'e0',source:'SPINE-1',target:'LEAF-1',weight:15},{id:'e1',source:'SPINE-1',target:'LEAF-2',weight:18},
+        {id:'e2',source:'SPINE-1',target:'LEAF-3',weight:25},{id:'e3',source:'SPINE-2',target:'LEAF-1',weight:26},
+        {id:'e4',source:'SPINE-2',target:'LEAF-2',weight:17},{id:'e5',source:'SPINE-2',target:'LEAF-3',weight:14},
+        {id:'e6',source:'LEAF-1',target:'RACK-A',weight:5},{id:'e7',source:'LEAF-1',target:'RACK-B',weight:6},
+        {id:'e8',source:'LEAF-2',target:'RACK-C',weight:4},{id:'e9',source:'LEAF-2',target:'RACK-D',weight:5},
+        {id:'e10',source:'LEAF-3',target:'RACK-E',weight:6},{id:'e11',source:'LEAF-3',target:'RACK-F',weight:4},
+        {id:'e12',source:'LEAF-1',target:'RACK-C',weight:12},{id:'e13',source:'LEAF-2',target:'RACK-B',weight:11},
+        {id:'e14',source:'LEAF-2',target:'RACK-E',weight:10},{id:'e15',source:'LEAF-3',target:'RACK-D',weight:13}
       ]
     }
   }
