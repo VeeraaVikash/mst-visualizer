@@ -65,11 +65,16 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
       const [stroke, sw, flt, da] = stMap[state] ?? stMap.default;
 
       const line = grp.select<SVGLineElement>('.gf-eline');
+      
+      // Update coordinates immediately to prevent lag during node drag
+      line.attr('x1', s.x).attr('y1', s.y).attr('x2', t.x).attr('y2', t.y);
+      
+      // Only transition styling
       line.transition().duration(280)
-        .attr('x1', s.x).attr('y1', s.y).attr('x2', t.x).attr('y2', t.y)
         .attr('stroke', stroke).attr('stroke-width', sw)
         .attr('filter', flt).attr('stroke-dasharray', da);
-      if (state === 'candidate') line.classed('edge-animated', true);
+
+      if (state === 'candidate' || state === 'accepted') line.classed('edge-animated', true);
       else line.classed('edge-animated', false);
 
       const mx = (s.x + t.x) / 2, my = (s.y + t.y) / 2;
@@ -123,9 +128,15 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
       if (isComplete && isActive) flt = 'drop-shadow(0 0 16px var(--glow-accept))';
 
       grp.attr('transform', `translate(${d.x},${d.y})`).style('cursor', deleteMode ? 'crosshair' : connectSource ? 'cell' : 'pointer');
-      grp.select('.gf-ncirc').transition().duration(280)
-        .attr('r', 26).attr('fill', 'var(--bg-elevated)')
+      
+      const circle = grp.select('.gf-ncirc');
+      circle.transition().duration(280)
+        .attr('r', isActive ? 28 : 24).attr('fill', 'var(--bg-elevated)')
         .attr('stroke', sc).attr('stroke-width', sw).attr('filter', flt);
+        
+      if (isActive && !isComplete) circle.classed('pulse', true);
+      else circle.classed('pulse', false);
+
       grp.select('.gf-nlbl')
         .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle')
         .attr('font-family', 'JetBrains Mono').attr('font-size', d.id.length > 2 ? 9 : 12)

@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import {
-  MousePointer2, Link2, Shuffle, Trash2, Save, FolderOpen,
+  MousePointer2, PlusCircle, Link2, Shuffle, Trash2, Save, FolderOpen,
   Network, Waypoints, Play, Pause, SkipBack, SkipForward,
   RotateCcw, Gauge, Eraser, PlayCircle, Wifi, Bolt, MapPin, Server,
 } from 'lucide-react';
@@ -40,9 +40,9 @@ export default function ControlPanel(props: Props) {
   const progress = steps.length > 0 ? ((stepIdx + 1) / steps.length) * 100 : 0;
 
   const SectionLabel = ({ label }: { label: string }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '13px 0 7px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '20px 0 12px' }}>
       <div style={{ height: '1px', flex: 1, background: 'var(--border)' }} />
-      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)' }}>{label}</span>
+      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)' }}>{label}</span>
       <div style={{ height: '1px', flex: 1, background: 'var(--border)' }} />
     </div>
   );
@@ -76,29 +76,30 @@ export default function ControlPanel(props: Props) {
   const notRunnableReason = !graph.nodes.length ? 'Add nodes' : graph.nodes.length < 2 ? 'Need 2+ nodes' : !graph.edges.length ? 'Add edges' : !isGraphConnected(graph) ? 'Graph disconnected' : '';
 
   return (
-    <div style={{ width: 258, background: 'var(--bg-panel)', borderRight: '1px solid var(--border)', overflowY: 'auto', padding: '8px 10px 20px', flexShrink: 0 }}>
+    <div style={{ width: 280, background: 'var(--bg-panel)', borderRight: '1px solid var(--border)', overflowY: 'auto', padding: '16px 20px 24px', flexShrink: 0 }}>
 
       <SectionLabel label="Scenario" />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginBottom: 5 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
         {Object.values(SCENARIOS).map(s => {
           const ScIcon = SCENARIO_ICONS[s.id] ?? Wifi;
           return (
             <button key={s.id} onClick={() => props.onScenario(s.id)}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '7px 4px', borderRadius: 8, cursor: 'pointer', transition: 'all 150ms',
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '10px 6px', borderRadius: 10, cursor: 'pointer', transition: 'all 150ms',
                 border: `1px solid ${scenario === s.id ? s.color : 'var(--border)'}`,
                 background: scenario === s.id ? `color-mix(in srgb, ${s.color} 12%, transparent)` : 'var(--bg-elevated)',
                 color: scenario === s.id ? s.color : 'var(--text-muted)' }}>
-              <ScIcon size={14} />
-              <span style={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace", textAlign: 'center' }}>{s.label.split(' ')[0]}</span>
+              <ScIcon size={18} />
+              <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", textAlign: 'center', fontWeight: 500 }}>{s.label.split(' ')[0]}</span>
             </button>
           );
         })}
       </div>
-      {sc && <p style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.4, marginBottom: 4, padding: '0 2px' }}>{sc.tagline}</p>}
+      {sc && <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 8, padding: '0 4px', textAlign: 'center' }}>{sc.tagline}</p>}
 
-      <SectionLabel label="Canvas" />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
-        <ToolBtn icon={MousePointer2} label="Add Node"  shortcut="N" active={canvasMode === 'addNode' && !deleteMode}    onClick={() => props.onToggleMode('addNode')} />
+      <SectionLabel label="Canvas Tools" />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <ToolBtn icon={MousePointer2} label="Select"    shortcut="Esc" active={canvasMode === 'select' && !deleteMode} onClick={() => props.onToggleMode('select')} />
+        <ToolBtn icon={PlusCircle}   label="Add Node"   shortcut="N" active={canvasMode === 'addNode' && !deleteMode}    onClick={() => props.onToggleMode('addNode')} />
         <ToolBtn icon={Link2}        label="Connect"    shortcut="E" active={canvasMode === 'connectEdge' && !deleteMode} onClick={() => props.onToggleMode('connectEdge')} />
         <ToolBtn icon={Eraser}       label="Delete"     shortcut="D" active={deleteMode} danger onClick={props.onDeleteMode} />
         <ToolBtn icon={Shuffle}      label="Random"     shortcut="G" onClick={() => props.onRandom(nodeCount)} />
@@ -107,11 +108,12 @@ export default function ControlPanel(props: Props) {
         <ToolBtn icon={FolderOpen}   label="Load JSON"               onClick={() => fileRef.current?.click()} />
       </div>
       <input ref={fileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleLoad} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
-        <span style={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)' }}>Rand size:</span>
+      
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12 }}>
+        <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)' }}>Rand size:</span>
         {[5, 7, 10, 15].map(n => (
           <button key={n} onClick={() => props.onNodeCount(n)}
-            style={{ padding: '2px 7px', borderRadius: 5, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer',
+            style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer',
               border: `1px solid ${nodeCount === n ? 'var(--accent-active)' : 'var(--border)'}`,
               background: nodeCount === n ? 'var(--accent-active)' : 'var(--bg-elevated)',
               color: nodeCount === n ? '#000' : 'var(--text-secondary)' }}>{n}</button>
@@ -119,22 +121,20 @@ export default function ControlPanel(props: Props) {
       </div>
 
       <SectionLabel label="Algorithm" />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginBottom: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
         <button onClick={() => props.onSetAlgo('kruskal')}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 10px', borderRadius: 9, cursor: 'pointer', transition: 'all 150ms', fontWeight: 600, fontSize: 12,
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', transition: 'all 150ms', fontWeight: 600, fontSize: 12,
             border: `1px solid ${algoType === 'kruskal' ? 'var(--accent-accept)' : 'var(--border)'}`,
             background: algoType === 'kruskal' ? 'color-mix(in srgb, var(--accent-accept) 14%, transparent)' : 'var(--bg-elevated)',
             color: algoType === 'kruskal' ? 'var(--accent-accept)' : 'var(--text-secondary)' }}>
-          <Network size={14} /> Kruskal's
-          <span style={{ marginLeft: 'auto', fontSize: 8, opacity: 0.4, fontFamily: "'JetBrains Mono', monospace" }}>K</span>
+          <Network size={16} /> Kruskal's
         </button>
         <button onClick={() => props.onSetAlgo('prim')}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 10px', borderRadius: 9, cursor: 'pointer', transition: 'all 150ms', fontWeight: 600, fontSize: 12,
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', transition: 'all 150ms', fontWeight: 600, fontSize: 12,
             border: `1px solid ${algoType === 'prim' ? 'var(--accent-candidate)' : 'var(--border)'}`,
             background: algoType === 'prim' ? 'color-mix(in srgb, var(--accent-candidate) 14%, transparent)' : 'var(--bg-elevated)',
             color: algoType === 'prim' ? 'var(--accent-candidate)' : 'var(--text-secondary)' }}>
-          <Waypoints size={14} /> Prim's
-          <span style={{ marginLeft: 'auto', fontSize: 8, opacity: 0.4, fontFamily: "'JetBrains Mono', monospace" }}>P</span>
+          <Waypoints size={16} /> Prim's
         </button>
       </div>
 
@@ -150,50 +150,50 @@ export default function ControlPanel(props: Props) {
 
       {/* THE RUN BUTTON — fixed */}
       <button onClick={props.onRun} disabled={!isRunnable}
-        style={{ width: '100%', padding: '11px 0', borderRadius: 10, border: 'none', fontWeight: 700, fontSize: 13,
-          cursor: isRunnable ? 'pointer' : 'not-allowed', transition: 'all 200ms', marginBottom: 2,
+        style={{ width: '100%', padding: '14px 0', borderRadius: 12, border: 'none', fontWeight: 700, fontSize: 14,
+          cursor: isRunnable ? 'pointer' : 'not-allowed', transition: 'all 200ms', marginBottom: 6,
           background: isRunnable ? (algoType === 'kruskal' ? 'var(--accent-accept)' : 'var(--accent-candidate)') : 'var(--bg-elevated)',
           color: isRunnable ? '#fff' : 'var(--text-muted)',
           boxShadow: isRunnable ? `0 0 20px color-mix(in srgb, ${algoType === 'kruskal' ? 'var(--accent-accept)' : 'var(--accent-candidate)'} 30%, transparent)` : 'none' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
-          <PlayCircle size={16} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <PlayCircle size={18} />
           Run {algoType === 'kruskal' ? "Kruskal's" : "Prim's"}
         </div>
-        {notRunnableReason && <div style={{ fontSize: 10, opacity: 0.6, marginTop: 2, fontWeight: 400 }}>{notRunnableReason}</div>}
+        {notRunnableReason && <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4, fontWeight: 400 }}>{notRunnableReason}</div>}
       </button>
 
       <SectionLabel label="Playback" />
       {steps.length > 0 && (
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-            <span style={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)' }}>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)' }}>
               {stepIdx >= 0 ? stepIdx + 1 : 0} / {steps.length}
             </span>
-            <span style={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace",
-              color: steps[stepIdx]?.type === 'COMPLETE' ? 'var(--accent-accept)' : 'var(--text-muted)' }}>
+            <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
+              color: steps[stepIdx]?.type === 'COMPLETE' ? 'var(--accent-accept)' : 'var(--accent-active)' }}>
               {steps[stepIdx]?.type?.replace(/_/g, ' ') ?? 'READY'}
             </span>
           </div>
-          <div style={{ height: 5, borderRadius: 3, background: 'var(--bg-elevated)', overflow: 'hidden' }}>
-            <div style={{ height: '100%', borderRadius: 3, transition: 'width 300ms', width: `${progress}%`,
+          <div style={{ height: 6, borderRadius: 3, background: 'var(--bg-elevated)', overflow: 'hidden' }}>
+            <div style={{ height: '100%', borderRadius: 3, transition: 'width 300ms ease-out', width: `${progress}%`,
               background: steps[stepIdx]?.type === 'COMPLETE' ? 'var(--accent-accept)' : 'var(--accent-active)' }} />
           </div>
         </div>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 7 }}>
-        <button onClick={props.onStepBack}   style={{ ...btn, padding: 7 }} title="Step back [←]"><SkipBack size={14} /></button>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12 }}>
+        <button onClick={props.onStepBack}   style={{ ...btn, padding: 10, flex: 1 }} title="Step back [←]"><SkipBack size={16} /></button>
         <button onClick={props.onTogglePlay}
-          style={{ padding: 10, borderRadius: 9, border: 'none', background: 'var(--accent-active)', color: '#000', cursor: 'pointer' }}>
-          {isPlaying ? <Pause size={17} /> : <Play size={17} />}
+          style={{ padding: '12px 24px', borderRadius: 10, border: 'none', background: 'var(--accent-active)', color: '#000', cursor: 'pointer', flex: 2, display: 'flex', justifyContent: 'center' }}>
+          {isPlaying ? <Pause size={18} /> : <Play size={18} />}
         </button>
-        <button onClick={props.onStepFwd}    style={{ ...btn, padding: 7 }} title="Step fwd [→]"><SkipForward size={14} /></button>
-        <button onClick={props.onResetAnimation} style={{ ...btn, padding: 7 }} title="Reset [R]"><RotateCcw size={14} /></button>
+        <button onClick={props.onStepFwd}    style={{ ...btn, padding: 10, flex: 1 }} title="Step fwd [→]"><SkipForward size={16} /></button>
+        <button onClick={props.onResetAnimation} style={{ ...btn, padding: 10, flex: 1 }} title="Reset [R]"><RotateCcw size={16} /></button>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-        <Gauge size={11} style={{ color: 'var(--text-muted)' }} />
-        <span style={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)' }}>Slow</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Gauge size={14} style={{ color: 'var(--text-muted)' }} />
+        <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)' }}>Slow</span>
         <input type="range" min={1} max={100} value={speed} onChange={e => props.onSpeedChange(Number(e.target.value))} style={{ flex: 1 }} />
-        <span style={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)' }}>Fast</span>
+        <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)' }}>Fast</span>
       </div>
     </div>
   );
