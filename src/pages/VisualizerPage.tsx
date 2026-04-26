@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { GitBranch, ArrowLeft, Keyboard, Activity, X } from 'lucide-react';
+import { GitBranch, ArrowLeft, Keyboard, Activity, X, TrendingUp } from 'lucide-react';
 import type { ThemeName, AlgorithmType, Graph, AlgorithmStep } from '../types';
 import { useGraph } from '../hooks/useGraph';
 import { useToast } from '../hooks/useToast';
@@ -11,9 +11,10 @@ import ThemeToggle from '../components/shared/ThemeToggle';
 import Toast from '../components/shared/Toast';
 import GraphCanvas from '../components/visualizer/GraphCanvas';
 import ControlPanel from '../components/visualizer/ControlPanel';
-import RightPanel from '../components/visualizer/RightPanel';
+import HistoryPanel from '../components/visualizer/HistoryPanel';
 import ExplanationBar from '../components/visualizer/ExplanationBar';
 import KeyboardModal from '../components/visualizer/KeyboardModal';
+import StatsPanel from '../components/visualizer/StatsPanel';
 
 interface Props { goLanding: () => void; theme: ThemeName; setTheme: (t: ThemeName) => void; cycleTheme: () => void; initialScenario: string; }
 
@@ -47,8 +48,8 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
 
   // UI state
   const [scenario, setScenario] = useState(initialScenario || 'telecom');
-  const [rightTab, setRightTab] = useState('info');
   const [showHelp, setShowHelp] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [nodeCount, setNodeCount] = useState(7);
 
   // Load scenario on change
@@ -96,7 +97,7 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
     const s = algoType === 'kruskal'
       ? runKruskal(graph, unit)
       : runPrim(graph, startNode || graph.nodes[0].id, unit);
-    setSteps(s); setStepIdx(-1); setPlaying(false);
+    setSteps(s); setStepIdx(s.length - 1); setPlaying(false);
     if (playRef.current) { clearInterval(playRef.current); playRef.current = null; }
   }, [graph, algoType, startNode, scenario, addToast]);
 
@@ -107,15 +108,24 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
   const stepBack = useCallback(() => setStepIdx(p => Math.max(p - 1, -1)), []);
 
   const togglePlay = useCallback(() => {
-    if (!steps.length) { runAlgo(); return; }
+    if (!steps.length) {
+      if (graph.nodes.length < 2 || !graph.edges.length || !isGraphConnected(graph)) {
+        runAlgo(); // Use runAlgo to show error toasts
+        return;
+      }
+      const unit = SCENARIOS[scenario]?.unit ?? '';
+      const s = algoType === 'kruskal' ? runKruskal(graph, unit) : runPrim(graph, startNode || graph.nodes[0].id, unit);
+      setSteps(s); setStepIdx(0); setPlaying(true);
+      return;
+    }
     if (playing) { setPlaying(false); return; }
-    if (stepIdx >= steps.length - 1) setStepIdx(-1);
+    if (stepIdx >= steps.length - 1) setStepIdx(0);
     setPlaying(true);
-  }, [playing, steps, stepIdx, runAlgo]);
+  }, [playing, steps, stepIdx, runAlgo, graph, algoType, startNode, scenario]);
 
   useEffect(() => {
     if (playing && steps.length > 0) {
-      const delay = Math.max(160, 2000 - speed * 18);
+      const delay = Math.max(400, 2500 - speed * 20);
       playRef.current = setInterval(() => {
         setStepIdx(p => {
           const n = p + 1;
@@ -135,13 +145,12 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
     const ks = runKruskal(graph, unit);
     const ps = runPrim(graph, graph.nodes[0].id, unit);
     setKSteps(ks); setPSteps(ps); setRaceIdx(-1); setRacePlaying(true);
-    setRightTab('race');
   }, [graph, scenario, addToast]);
 
   useEffect(() => {
     if (racePlaying && (kSteps.length > 0 || pSteps.length > 0)) {
       const maxL = Math.max(kSteps.length, pSteps.length);
-      const delay = Math.max(160, 2000 - speed * 18);
+      const delay = Math.max(400, 2500 - speed * 20);
       raceRef.current = setInterval(() => {
         setRaceIdx(p => { const n = p + 1; if (n >= maxL) { setRacePlaying(false); if (raceRef.current) clearInterval(raceRef.current); return p; } return n; });
       }, delay);
@@ -192,7 +201,7 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
     resetAlgo(); setDeleteMode(false);
   };
 
-  const handleScenario = (id: string) => { setScenario(id); setRightTab('info'); };
+  const handleScenario = (id: string) => { setScenario(id); };
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -246,10 +255,15 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
-          <button onClick={startRace}
+          <button onClick={() => setShowStats(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, borderRadius: 8, padding: '5px 12px', fontSize: 11, fontFamily: "'JetBrains Mono', monospace", border: '1px solid var(--accent-candidate)', background: 'color-mix(in srgb, var(--accent-candidate) 12%, transparent)', color: 'var(--accent-candidate)', cursor: 'pointer' }}
+            title="View Statistics">
+            <TrendingUp size={12} /> Stats
+          </button>
+          <button onClick={() => { if (raceIdx !== -1 || racePlaying) { setRacePlaying(false); setRaceIdx(-1); } else startRace(); }}
             style={{ display: 'flex', alignItems: 'center', gap: 5, borderRadius: 8, padding: '5px 12px', fontSize: 11, fontFamily: "'JetBrains Mono', monospace", border: '1px solid var(--accent-active)', background: 'color-mix(in srgb, var(--accent-active) 12%, transparent)', color: 'var(--accent-active)', cursor: 'pointer' }}
             title="Race both algorithms [C]">
-            <Activity size={12} /> Race [C]
+            <Activity size={12} /> {raceIdx !== -1 || racePlaying ? 'Stop Race' : 'Race [C]'}
           </button>
           <ThemeToggle theme={theme} setTheme={setTheme} />
           <button onClick={() => setShowHelp(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', cursor: 'pointer' }} title="Shortcuts [?]">
@@ -262,8 +276,9 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
         <ControlPanel
           graph={graph} canvasMode={canvasMode} deleteMode={deleteMode} algoType={algoType}
-          startNode={startNode} isPlaying={playing} speed={speed} scenario={scenario}
-          steps={steps} stepIdx={stepIdx} nodeCount={nodeCount}
+          startNode={startNode} isPlaying={(racePlaying || raceIdx !== -1) ? racePlaying : playing} speed={speed} scenario={scenario}
+          steps={(racePlaying || raceIdx !== -1) ? (kSteps.length > pSteps.length ? kSteps : pSteps) : steps}
+          stepIdx={(racePlaying || raceIdx !== -1) ? raceIdx : stepIdx} nodeCount={nodeCount}
           onToggleMode={(m) => { setDeleteMode(false); toggleMode(m); }}
           onDeleteMode={() => setDeleteMode(p => { if (!p) setCanvasMode('select'); return !p; })}
           onRandom={handleRandom} onResetGraph={() => { resetGraph(); resetAlgo(); setDeleteMode(false); }}
@@ -271,23 +286,42 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
           onLoad={(g) => { loadGraph(g); setEdgeCounter(g.edges.length); setDeleteMode(false); resetAlgo(); }}
           onSetAlgo={(t) => { setAlgoType(t); resetAlgo(); }}
           onSetStart={setStartNode} onRun={runAlgo}
-          onTogglePlay={togglePlay} onStepFwd={stepFwd} onStepBack={stepBack}
-          onResetAnimation={() => { setStepIdx(-1); setPlaying(false); }}
+          onTogglePlay={() => { if (racePlaying || raceIdx !== -1) setRacePlaying(p => !p); else togglePlay(); }}
+          onStepFwd={() => { if (racePlaying || raceIdx !== -1) setRaceIdx(p => Math.min(p + 1, Math.max(kSteps.length, pSteps.length) - 1)); else stepFwd(); }}
+          onStepBack={() => { if (racePlaying || raceIdx !== -1) setRaceIdx(p => Math.max(p - 1, -1)); else stepBack(); }}
+          onResetAnimation={() => { if (racePlaying || raceIdx !== -1) { setRaceIdx(-1); setRacePlaying(false); } else { setStepIdx(-1); setPlaying(false); } }}
           onSpeedChange={setSpeed} onScenario={handleScenario}
           onNodeCount={setNodeCount} addToast={addToast}
         />
 
         {/* CANVAS */}
-        <div ref={canvasContRef} style={{ flex: 1, position: 'relative', minWidth: 0, background: 'var(--bg-canvas)' }}>
-          <GraphCanvas
-            graph={graph} step={curStep} canvasMode={canvasMode} deleteMode={deleteMode}
-            connectSource={connectSource} onBgClick={handleBgClick} onNodeClick={handleNodeClick}
-            onNodeDrag={updateNodePosition} onEdgeAction={handleEdgeAction}
-            isComplete={curStep?.type === 'COMPLETE'}
-          />
+        <div ref={canvasContRef} style={{ flex: 1, position: 'relative', minWidth: 0, background: 'var(--bg-canvas)', display: 'flex' }}>
+          {(racePlaying || raceIdx !== -1) ? (
+            <div style={{ display: 'flex', width: '100%', height: '100%' }}>
+              <div style={{ flex: 1, position: 'relative', borderRight: '1px solid var(--border)' }}>
+                <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 10, padding: '6px 12px', borderRadius: 8, background: 'var(--bg-panel)', border: '1px solid var(--border)', fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: 'var(--accent-accept)' }}>
+                  Kruskal's Algorithm
+                </div>
+                <GraphCanvas graph={graph} step={raceIdx >= 0 ? kSteps[raceIdx] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={() => {}} onEdgeAction={() => {}} isComplete={kSteps[raceIdx]?.type === 'COMPLETE'} />
+              </div>
+              <div style={{ flex: 1, position: 'relative' }}>
+                <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 10, padding: '6px 12px', borderRadius: 8, background: 'var(--bg-panel)', border: '1px solid var(--border)', fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: 'var(--accent-candidate)' }}>
+                  Prim's Algorithm
+                </div>
+                <GraphCanvas graph={graph} step={raceIdx >= 0 ? pSteps[raceIdx] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={() => {}} onEdgeAction={() => {}} isComplete={pSteps[raceIdx]?.type === 'COMPLETE'} />
+              </div>
+            </div>
+          ) : (
+            <GraphCanvas
+              graph={graph} step={curStep} canvasMode={canvasMode} deleteMode={deleteMode}
+              connectSource={connectSource} onBgClick={handleBgClick} onNodeClick={handleNodeClick}
+              onNodeDrag={updateNodePosition} onEdgeAction={handleEdgeAction}
+              isComplete={curStep?.type === 'COMPLETE'}
+            />
+          )}
 
           {/* Weight popup */}
-          {weightPopup && (
+          {weightPopup && !racePlaying && raceIdx === -1 && (
             <div style={{ position: 'absolute', zIndex: 30, left: weightPopup.x - 75, top: weightPopup.y - 24, display: 'flex', alignItems: 'center', gap: 7, padding: 9, borderRadius: 10, background: 'var(--bg-panel)', border: '1px solid var(--accent-active)', boxShadow: 'var(--shadow)' }}>
               <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-secondary)' }}>{weightPopup.source}—{weightPopup.target}:</span>
               <input ref={weightInputRef} type="number" min={1} max={9999} defaultValue={10}
@@ -298,7 +332,7 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
           )}
 
           {/* Edge edit modal */}
-          {editEdge && (
+          {editEdge && !racePlaying && raceIdx === -1 && (
             <div style={{ position: 'absolute', zIndex: 30, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', padding: 18, borderRadius: 13, background: 'var(--bg-panel)', border: '1px solid var(--accent-active)', boxShadow: 'var(--shadow)', minWidth: 230 }}>
               <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: 'var(--text-primary)', marginBottom: 12, fontWeight: 600 }}>
                 Edit: {editEdge.source} — {editEdge.target}
@@ -323,24 +357,33 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
               </div>
             </div>
           )}
+          
+          {!(racePlaying || raceIdx !== -1) && <ExplanationBar currentStep={curStep} stepIndex={stepIdx} />}
         </div>
 
-        {/* RIGHT PANEL */}
-        <RightPanel
-          activeTab={rightTab} onTabChange={setRightTab}
-          graph={graph} steps={steps} currentIdx={stepIdx} algoType={algoType}
-          scenario={scenario} currentStep={curStep}
-          kSteps={kSteps} pSteps={pSteps} raceIdx={raceIdx} racePlaying={racePlaying}
-          onRaceToggle={() => setRacePlaying(p => !p)}
-          onRaceReset={() => { setRaceIdx(-1); setRacePlaying(false); }}
-          onRaceStepFwd={() => setRaceIdx(p => Math.min(p + 1, Math.max(kSteps.length, pSteps.length) - 1))}
-          onRaceStepBack={() => setRaceIdx(p => Math.max(p - 1, -1))}
-          speed={speed} onSpeedChange={setSpeed}
-          onJumpHistory={i => setStepIdx(i)}
-        />
+        {/* RIGHT PANEL - Just History */}
+        {!(racePlaying || raceIdx !== -1) && (
+          <div style={{ width: 270, background: 'var(--bg-panel)', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden' }}>
+            <HistoryPanel steps={steps} currentIdx={stepIdx} onJump={i => setStepIdx(i)} algoType={algoType} scenario={scenario} />
+          </div>
+        )}
       </div>
 
-      <ExplanationBar step={curStep} idx={stepIdx} />
+      {showStats && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+          <div style={{ width: 450, background: 'var(--bg-panel)', borderRadius: 16, border: '1px solid var(--border)', boxShadow: '0 20px 40px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: 'var(--text-primary)' }}>
+                <TrendingUp size={16} style={{ color: 'var(--accent-active)' }} /> Network Statistics
+              </div>
+              <button onClick={() => setShowStats(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={16} /></button>
+            </div>
+            <div style={{ padding: '20px', maxHeight: '70vh', overflowY: 'auto' }}>
+              <StatsPanel graph={graph} steps={steps} currentIdx={stepIdx} algoType={algoType} scenario={scenario} />
+            </div>
+          </div>
+        </div>
+      )}
       <Toast toasts={toasts} removeToast={removeToast} />
       <KeyboardModal open={showHelp} onClose={() => setShowHelp(false)} />
     </div>
