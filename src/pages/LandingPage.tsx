@@ -117,10 +117,6 @@ export default function LandingPage({ theme, setTheme }: Props) {
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 32px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, var(--accent-accept), var(--accent-candidate))', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 12px 30px -10px color-mix(in srgb, var(--accent-accept) 60%, transparent)' }}>
                   <GitBranch size={18} /> Start Visualizing
                 </motion.button>
-                <motion.button onClick={() => goApp('telecom')} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 28px', borderRadius: 14, border: '1px solid var(--border)', background: 'color-mix(in srgb, var(--bg-elevated) 50%, transparent)', backdropFilter: 'blur(10px)', color: 'var(--text-primary)', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
-                  <Wifi size={16} /> Try Demo
-                </motion.button>
               </motion.div>
             </motion.div>
 
