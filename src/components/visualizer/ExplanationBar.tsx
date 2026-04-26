@@ -18,17 +18,30 @@ const stepTypeIcon: Record<string, React.ReactNode> = {
   COMPLETE: <CheckCircle size={22} style={{ color: 'var(--accent-accept)' }} />,
 };
 
+const parseExplanation = (text: string) => {
+  const parts = text.split(/(\*\*.*?\*\*|\{.*?\})/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('{') && part.endsWith('}')) {
+      return <span key={i} style={{ color: 'var(--accent-active)', fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", fontSize: '0.95em' }}>{part.slice(1, -1)}</span>;
+    }
+    return <span key={i}>{part}</span>;
+  });
+};
+
 const ExplanationBar: React.FC<ExplanationBarProps> = ({ currentStep, stepIndex }) => {
   return (
     <div style={{ position: 'absolute', bottom: 40, left: '50%', transform: 'translateX(-50%)', zIndex: 50, pointerEvents: 'none', width: '90%', maxWidth: 640 }}>
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="popLayout">
         {currentStep ? (
           <motion.div
             key={stepIndex}
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            initial={{ opacity: 0, y: 15, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            transition={{ duration: 0.3, type: 'spring', damping: 25, stiffness: 300 }}
+            exit={{ opacity: 0, y: -15, scale: 0.98 }}
+            transition={{ duration: 0.25, type: 'spring', damping: 22, stiffness: 350 }}
             style={{
               background: 'color-mix(in srgb, var(--bg-panel) 85%, transparent)',
               backdropFilter: 'blur(12px)',
@@ -60,7 +73,7 @@ const ExplanationBar: React.FC<ExplanationBarProps> = ({ currentStep, stepIndex 
                 </span>
               </div>
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0, fontWeight: 500 }}>
-                {currentStep.explanation}
+                {parseExplanation(currentStep.explanation)}
               </p>
             </div>
           </motion.div>

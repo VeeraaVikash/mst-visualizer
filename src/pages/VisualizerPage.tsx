@@ -44,6 +44,7 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
   const [pSteps, setPSteps] = useState<AlgorithmStep[]>([]);
   const [raceIdx, setRaceIdx] = useState(-1);
   const [racePlaying, setRacePlaying] = useState(false);
+  const [raceHistory, setRaceHistory] = useState<'kruskal' | 'prim' | null>(null);
   const raceRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // UI state
@@ -144,7 +145,7 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
     const unit = SCENARIOS[scenario]?.unit ?? '';
     const ks = runKruskal(graph, unit);
     const ps = runPrim(graph, graph.nodes[0].id, unit);
-    setKSteps(ks); setPSteps(ps); setRaceIdx(-1); setRacePlaying(true);
+    setKSteps(ks); setPSteps(ps); setRaceIdx(-1); setRacePlaying(true); setRaceHistory(null);
   }, [graph, scenario, addToast]);
 
   useEffect(() => {
@@ -260,7 +261,7 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
             title="View Statistics">
             <TrendingUp size={12} /> Stats
           </button>
-          <button onClick={() => { if (raceIdx !== -1 || racePlaying) { setRacePlaying(false); setRaceIdx(-1); } else startRace(); }}
+          <button onClick={() => { if (raceIdx !== -1 || racePlaying) { setRacePlaying(false); setRaceIdx(-1); setRaceHistory(null); } else startRace(); }}
             style={{ display: 'flex', alignItems: 'center', gap: 5, borderRadius: 8, padding: '5px 12px', fontSize: 11, fontFamily: "'JetBrains Mono', monospace", border: '1px solid var(--accent-active)', background: 'color-mix(in srgb, var(--accent-active) 12%, transparent)', color: 'var(--accent-active)', cursor: 'pointer' }}
             title="Race both algorithms [C]">
             <Activity size={12} /> {raceIdx !== -1 || racePlaying ? 'Stop Race' : 'Race [C]'}
@@ -289,26 +290,54 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
           onTogglePlay={() => { if (racePlaying || raceIdx !== -1) setRacePlaying(p => !p); else togglePlay(); }}
           onStepFwd={() => { if (racePlaying || raceIdx !== -1) setRaceIdx(p => Math.min(p + 1, Math.max(kSteps.length, pSteps.length) - 1)); else stepFwd(); }}
           onStepBack={() => { if (racePlaying || raceIdx !== -1) setRaceIdx(p => Math.max(p - 1, -1)); else stepBack(); }}
-          onResetAnimation={() => { if (racePlaying || raceIdx !== -1) { setRaceIdx(-1); setRacePlaying(false); } else { setStepIdx(-1); setPlaying(false); } }}
+          onResetAnimation={() => { if (racePlaying || raceIdx !== -1) { setRaceIdx(-1); setRacePlaying(false); setRaceHistory(null); } else { setStepIdx(-1); setPlaying(false); } }}
           onSpeedChange={setSpeed} onScenario={handleScenario}
           onNodeCount={setNodeCount} addToast={addToast}
         />
 
         {/* CANVAS */}
-        <div ref={canvasContRef} style={{ flex: 1, position: 'relative', minWidth: 0, background: 'var(--bg-canvas)', display: 'flex' }}>
+        <div ref={canvasContRef} style={{ flex: 1, position: 'relative', minWidth: 0, background: 'var(--bg-canvas)', display: 'flex', overflow: 'hidden' }}>
           {(racePlaying || raceIdx !== -1) ? (
             <div style={{ display: 'flex', width: '100%', height: '100%' }}>
               <div style={{ flex: 1, position: 'relative', borderRight: '1px solid var(--border)' }}>
-                <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 10, padding: '6px 12px', borderRadius: 8, background: 'var(--bg-panel)', border: '1px solid var(--border)', fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: 'var(--accent-accept)' }}>
-                  Kruskal's Algorithm
+                <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 30, display: 'flex', gap: 8 }}>
+                  <div style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--bg-panel)', border: '1px solid var(--border)', fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: 'var(--accent-accept)', boxShadow: 'var(--shadow)' }}>
+                    Kruskal's Algorithm
+                  </div>
+                  <button onClick={() => setRaceHistory(p => p === 'kruskal' ? null : 'kruskal')} style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--bg-panel)', border: '1px solid var(--border)', fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer', boxShadow: 'var(--shadow)' }}>
+                    {raceHistory === 'kruskal' ? 'Close History' : 'History'}
+                  </button>
                 </div>
-                <GraphCanvas graph={graph} step={raceIdx >= 0 ? kSteps[raceIdx] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={() => {}} onEdgeAction={() => {}} isComplete={kSteps[raceIdx]?.type === 'COMPLETE'} />
+                
+                {raceHistory === 'prim' && (
+                  <div style={{ position: 'absolute', inset: 0, zIndex: 20, background: 'color-mix(in srgb, var(--bg-canvas) 95%, transparent)', backdropFilter: 'blur(10px)', padding: '60px 20px 20px 20px' }}>
+                    <HistoryPanel steps={pSteps} currentIdx={Math.min(raceIdx, pSteps.length - 1)} onJump={i => setRaceIdx(i)} algoType="prim" scenario={scenario} />
+                  </div>
+                )}
+                
+                <GraphCanvas graph={graph} step={raceIdx >= 0 ? kSteps[Math.min(raceIdx, kSteps.length - 1)] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={() => {}} onEdgeAction={() => {}} isComplete={kSteps[Math.min(raceIdx, kSteps.length - 1)]?.type === 'COMPLETE'} />
+                
+                {raceIdx >= 0 && <ExplanationBar currentStep={kSteps[Math.min(raceIdx, kSteps.length - 1)]} stepIndex={Math.min(raceIdx, kSteps.length - 1)} />}
               </div>
               <div style={{ flex: 1, position: 'relative' }}>
-                <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 10, padding: '6px 12px', borderRadius: 8, background: 'var(--bg-panel)', border: '1px solid var(--border)', fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: 'var(--accent-candidate)' }}>
-                  Prim's Algorithm
+                <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 30, display: 'flex', gap: 8 }}>
+                  <div style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--bg-panel)', border: '1px solid var(--border)', fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: 'var(--accent-candidate)', boxShadow: 'var(--shadow)' }}>
+                    Prim's Algorithm
+                  </div>
+                  <button onClick={() => setRaceHistory(p => p === 'prim' ? null : 'prim')} style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--bg-panel)', border: '1px solid var(--border)', fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer', boxShadow: 'var(--shadow)' }}>
+                    {raceHistory === 'prim' ? 'Close History' : 'History'}
+                  </button>
                 </div>
-                <GraphCanvas graph={graph} step={raceIdx >= 0 ? pSteps[raceIdx] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={() => {}} onEdgeAction={() => {}} isComplete={pSteps[raceIdx]?.type === 'COMPLETE'} />
+
+                {raceHistory === 'kruskal' && (
+                  <div style={{ position: 'absolute', inset: 0, zIndex: 20, background: 'color-mix(in srgb, var(--bg-canvas) 95%, transparent)', backdropFilter: 'blur(10px)', padding: '60px 20px 20px 20px' }}>
+                    <HistoryPanel steps={kSteps} currentIdx={Math.min(raceIdx, kSteps.length - 1)} onJump={i => setRaceIdx(i)} algoType="kruskal" scenario={scenario} />
+                  </div>
+                )}
+                
+                <GraphCanvas graph={graph} step={raceIdx >= 0 ? pSteps[Math.min(raceIdx, pSteps.length - 1)] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={() => {}} onEdgeAction={() => {}} isComplete={pSteps[Math.min(raceIdx, pSteps.length - 1)]?.type === 'COMPLETE'} />
+                
+                {raceIdx >= 0 && <ExplanationBar currentStep={pSteps[Math.min(raceIdx, pSteps.length - 1)]} stepIndex={Math.min(raceIdx, pSteps.length - 1)} />}
               </div>
             </div>
           ) : (
