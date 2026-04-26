@@ -15,6 +15,7 @@ interface Props {
   onEdgeAction: (edge: GEdge, action: 'edit' | 'delete') => void;
   isComplete: boolean;
   scenario?: string;
+  autoFit?: boolean;
 }
 
 // --- Node radius calculation based on label length ---
@@ -45,7 +46,7 @@ function getScenarioGlow(scenario: string): string {
   }
 }
 
-export default function GraphCanvas({ graph, step, canvasMode, deleteMode, connectSource, onBgClick, onNodeClick, onNodeDrag, onEdgeAction, isComplete, scenario }: Props) {
+export default function GraphCanvas({ graph, step, canvasMode, deleteMode, connectSource, onBgClick, onNodeClick, onNodeDrag, onEdgeAction, isComplete, scenario, autoFit }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const mainGRef = useRef<SVGGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -58,18 +59,45 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
     const accentColor = getScenarioAccent(sc);
     const glowColor = getScenarioGlow(sc);
 
-    // O(1) node lookup map — avoids O(V) find() per edge
+    // O(1) node lookup map
     const nodeMap = new Map(graph.nodes.map(n => [n.id, n]));
 
+    // We need containers to enforce z-index
+    // Bottom: Edge lines
+    let edgeLinesG = g.select<SVGGElement>('.gf-edge-lines');
+    if (edgeLinesG.empty()) edgeLinesG = g.append('g').attr('class', 'gf-edge-lines');
+    
+    // Middle: Edge labels (weights)
+    let edgeLabelsG = g.select<SVGGElement>('.gf-edge-labels');
+    if (edgeLabelsG.empty()) edgeLabelsG = g.append('g').attr('class', 'gf-edge-labels');
+    
+    // Top: Nodes
+    let nodesG = g.select<SVGGElement>('.gf-nodes');
+    if (nodesG.empty()) nodesG = g.append('g').attr('class', 'gf-nodes');
+
     // ============================================================
-    // EDGES
+    // EDGES (Lines)
     // ============================================================
-    const edgeGroups = g.selectAll<SVGGElement, GEdge>('.gf-edge')
+    const edgeGroups = edgeLinesG.selectAll<SVGGElement, GEdge>('.gf-edge')
       .data(graph.edges, d => d.id)
       .join(
         enter => {
           const grp = enter.append('g').attr('class', 'gf-edge');
           grp.append('path').attr('class', 'gf-eline').attr('fill', 'none');
+          return grp;
+        },
+        update => update,
+        exit => exit.remove()
+      );
+
+    // ============================================================
+    // EDGE LABELS (Weights)
+    // ============================================================
+    const edgeLabelGroups = edgeLabelsG.selectAll<SVGGElement, GEdge>('.gf-edge-label-grp')
+      .data(graph.edges, d => d.id)
+      .join(
+        enter => {
+          const grp = enter.append('g').attr('class', 'gf-edge-label-grp');
           grp.append('rect').attr('class', 'gf-ebg');
           grp.append('text').attr('class', 'gf-ewt');
           return grp;
@@ -164,14 +192,80 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
 
       if (state === 'candidate' || state === 'accepted') path.classed('edge-animated', true);
       else path.classed('edge-animated', false);
+    });
+
+    // Process edge labels separately
+    edgeLabelGroups.each(function(d) {
+      const grp = d3.select(this);
+      const s = nodeMap.get(d.source);
+      const t = nodeMap.get(d.target);
+      if (!s || !t) return;
+
+      let state = 'default';
+      if (step) {
+        if (mstEdgeSet!.has(d.id)) state = 'accepted';
+        else if (rejectedEdgeSet!.has(d.id)) state = 'rejected';
+        else if (candidateEdgeSet!.has(d.id)) state = 'candidate';
+        else if (highlightedEdgeSet!.has(d.id)) state = 'considering';
+      }
+
+      const stMap: Record<string, [string, number, string, string]> = {
+        default: ['var(--accent-default)', 1.5, 'none', 'none'],
+        considering: ['var(--accent-active)', 2.5, 'drop-shadow(0 0 6px var(--accent-active))', 'none'],
+        accepted: ['var(--accent-accept)', 3, `drop-shadow(0 0 ${isComplete ? 14 : 8}px var(--glow-accept))`, 'none'],
+        rejected: ['var(--accent-reject)', 1.5, 'drop-shadow(0 0 3px var(--accent-reject))', 'none'],
+        candidate: ['var(--accent-candidate)', 1.5, 'none', '6 4'],
+      };
+      const [stroke] = stMap[state] ?? stMap.default;
+
+      const sR = getNodeRadius(s.id);
+      const tR = getNodeRadius(t.id);
+      const dx = t.x - s.x;
+      const dy = t.y - s.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const ux = dx / dist;
+      const uy = dy / dist;
+      const sx = s.x + ux * sR;
+      const sy = s.y + uy * sR;
+      const tx = t.x - ux * tR;
+      const ty = t.y - uy * tR;
+
+      const pairKey = [d.source, d.target].sort().join('::');
+      const count = pairCount[pairKey] || 1;
+      const idx = pairIndex[d.id] || 0;
+
+      let labelX: number, labelY: number;
+
+      if (count > 1) {
+        const offset = (idx - (count - 1) / 2) * 0.2;
+        const midX = (sx + tx) / 2 - (ty - sy) * offset;
+        const midY = (sy + ty) / 2 + (tx - sx) * offset;
+        labelX = 0.25 * sx + 0.5 * midX + 0.25 * tx;
+        labelY = 0.25 * sy + 0.5 * midY + 0.25 * ty;
+      } else {
+        labelX = (sx + tx) / 2;
+        labelY = (sy + ty) / 2;
+        
+        // Smart offset for short edges so labels don't cover nodes
+        const tw = String(d.weight).length * 7 + 12;
+        const visibleLength = dist - sR - tR;
+        if (visibleLength < tw + 10) {
+          // Push perpendicularly off the line
+          const pushAmount = 24;
+          labelX += -uy * pushAmount;
+          labelY += ux * pushAmount;
+        }
+      }
 
       // Weight badge
       const tw = String(d.weight).length * 7 + 12;
       grp.select('.gf-ebg')
         .attr('x', labelX - tw / 2).attr('y', labelY - 9).attr('width', tw).attr('height', 18)
-        .attr('rx', 4).attr('fill', 'var(--bg-panel)').attr('stroke', 'var(--border)').attr('stroke-width', 0.5)
-        .attr('opacity', 0.9)
+        .attr('rx', 4).attr('fill', 'var(--bg-base)') // Use pure background to block edge
+        .attr('stroke', 'var(--border)').attr('stroke-width', 0.5)
+        .attr('opacity', 1)
         .style('cursor', deleteMode ? 'crosshair' : 'pointer');
+      
       grp.select('.gf-ewt')
         .attr('x', labelX).attr('y', labelY + 4).attr('text-anchor', 'middle')
         .attr('font-family', "'JetBrains Mono', monospace").attr('font-size', 10).attr('font-weight', 600)
@@ -187,7 +281,7 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
     // ============================================================
     // NODES — Pure SVG (circle + text), no foreignObject
     // ============================================================
-    const nodeGroups = g.selectAll<SVGGElement, GNode>('.gf-node')
+    const nodeGroups = nodesG.selectAll<SVGGElement, GNode>('.gf-node')
       .data(graph.nodes, d => d.id)
       .join(
         enter => {
@@ -347,6 +441,17 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
     d3.select(svgRef.current).transition().duration(400)
       .call(zoomBehavior.current.transform, d3.zoomIdentity.translate(tx, ty).scale(sc));
   }, [graph.nodes]);
+
+  // Auto-fit on mount or when graph changes (for race mode canvases)
+  const hasFitted = useRef(false);
+  useEffect(() => {
+    if (autoFit && graph.nodes.length > 0 && zoomBehavior.current && svgRef.current && containerRef.current) {
+      // Small delay to allow SVG dimensions to settle
+      const timer = setTimeout(() => fitView(), hasFitted.current ? 50 : 200);
+      hasFitted.current = true;
+      return () => clearTimeout(timer);
+    }
+  }, [autoFit, graph.nodes, fitView]);
 
   const zoomBy = useCallback((factor: number) => {
     if (!zoomBehavior.current || !svgRef.current) return;

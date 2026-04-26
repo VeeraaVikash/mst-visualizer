@@ -13,17 +13,69 @@ export class LayoutManager {
     const nodes = graph.nodes.map(n => ({ ...n }));
     const edges = graph.edges.map(e => ({ ...e }));
 
-    const padding = 80;
+    // We rely on autoFit to scale the final view appropriately.
+    // We use a moderately expanded coordinate space (1.3x) to give some breathing room,
+    // combined with smart label offsetting in GraphCanvas for any remaining tight edges.
+    const virtualWidth = Math.max(width * 1.3, 1200);
+    const virtualHeight = Math.max(height * 1.3, 1000);
+    const padding = 100;
 
     if (type === 'force') {
-      this.runForceAtlas2Layout(nodes, edges, width, height, padding);
+      this.runForceAtlas2Layout(nodes, edges, virtualWidth, virtualHeight, padding);
     } else if (type === 'hierarchical') {
-      this.runHierarchicalLayout(nodes, edges, width, height, padding);
+      this.runHierarchicalLayout(nodes, edges, virtualWidth, virtualHeight, padding);
+      this.runNoverlapPass(nodes, virtualWidth, virtualHeight, padding);
     } else if (type === 'geographic') {
-      this.runGeographicLayout(nodes, width, height, padding);
+      this.runGeographicLayout(nodes, virtualWidth, virtualHeight, padding);
+      this.runNoverlapPass(nodes, virtualWidth, virtualHeight, padding);
     }
 
     return { nodes, edges: graph.edges };
+  }
+
+  /**
+   * Shared noverlap pass: push apart any nodes that are too close.
+   * Runs graphology-noverlap on already-positioned nodes, then re-fits to canvas.
+   */
+  private static runNoverlapPass(nodes: GraphNode[], width: number, height: number, padding: number) {
+    const V = nodes.length;
+    if (V < 2) return;
+
+    const g = new Graph();
+    nodes.forEach(n => {
+      const baseR = 22;
+      const extra = Math.max(0, n.id.length - 2) * 4;
+      const r = Math.min(baseR + extra, 42);
+      g.addNode(n.id, { x: n.x, y: n.y, size: r });
+    });
+
+    noverlap.assign(g, {
+      maxIterations: 200,
+      settings: {
+        margin: Math.max(60, 180 / Math.sqrt(V)),
+        ratio: 2,
+        speed: 2,
+        gridSize: Math.max(8, Math.ceil(Math.sqrt(V) * 2)),
+      },
+    });
+
+    // Re-fit to canvas after noverlap may have pushed nodes outward
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    g.forEachNode((_key, attrs) => {
+      if (attrs.x < minX) minX = attrs.x;
+      if (attrs.x > maxX) maxX = attrs.x;
+      if (attrs.y < minY) minY = attrs.y;
+      if (attrs.y > maxY) maxY = attrs.y;
+    });
+
+    const cx = width / 2, cy = height / 2;
+    const centerX = (minX + maxX) / 2, centerY = (minY + maxY) / 2;
+
+    nodes.forEach(n => {
+      const attrs = g.getNodeAttributes(n.id);
+      n.x = cx + (attrs.x - centerX);
+      n.y = cy + (attrs.y - centerY);
+    });
   }
 
   /**
@@ -66,8 +118,8 @@ export class LayoutManager {
     // --- Run ForceAtlas2 ---
     // Adaptive settings based on graph size
     const iterations = Math.max(200, V * 20);
-    const scalingRatio = Math.max(2, V * 0.5);
-    const gravity = Math.max(0.5, 10 / V);
+    const scalingRatio = Math.max(4, V * 0.8);
+    const gravity = Math.max(0.3, 8 / V);
 
     forceAtlas2.assign(g, {
       iterations,
@@ -115,14 +167,6 @@ export class LayoutManager {
       if (attrs.y > maxY) maxY = attrs.y;
     });
 
-    const rangeX = Math.max(1, maxX - minX);
-    const rangeY = Math.max(1, maxY - minY);
-
-    // Scale to fit canvas with padding, maintaining aspect ratio
-    const scaleX = (width - 2 * padding) / rangeX;
-    const scaleY = (height - 2 * padding) / rangeY;
-    const scale = Math.min(scaleX, scaleY);
-
     const cx = width / 2;
     const cy = height / 2;
     const centerX = (minX + maxX) / 2;
@@ -130,11 +174,8 @@ export class LayoutManager {
 
     nodes.forEach(n => {
       const attrs = g.getNodeAttributes(n.id);
-      n.x = cx + (attrs.x - centerX) * scale;
-      n.y = cy + (attrs.y - centerY) * scale;
-      // Hard clamp
-      n.x = Math.max(padding, Math.min(width - padding, n.x));
-      n.y = Math.max(padding, Math.min(height - padding, n.y));
+      n.x = cx + (attrs.x - centerX);
+      n.y = cy + (attrs.y - centerY);
     });
   }
 

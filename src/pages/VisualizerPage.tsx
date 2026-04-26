@@ -332,7 +332,7 @@ export default function VisualizerPage({ theme, setTheme, cycleTheme }: Props) {
                   </div>
                 )}
                 
-                <GraphCanvas graph={graph} step={raceIdx >= 0 ? kSteps[Math.min(raceIdx, kSteps.length - 1)] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={() => {}} onEdgeAction={() => {}} isComplete={kSteps[Math.min(raceIdx, kSteps.length - 1)]?.type === 'COMPLETE'} scenario={scenario} />
+                <GraphCanvas graph={graph} step={raceIdx >= 0 ? kSteps[Math.min(raceIdx, kSteps.length - 1)] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={() => {}} onEdgeAction={() => {}} isComplete={kSteps[Math.min(raceIdx, kSteps.length - 1)]?.type === 'COMPLETE'} scenario={scenario} autoFit={true} />
                 
                 {raceIdx >= 0 && <ExplanationBar currentStep={kSteps[Math.min(raceIdx, kSteps.length - 1)]} stepIndex={Math.min(raceIdx, kSteps.length - 1)} />}
               </div>
@@ -352,7 +352,7 @@ export default function VisualizerPage({ theme, setTheme, cycleTheme }: Props) {
                   </div>
                 )}
                 
-                <GraphCanvas graph={graph} step={raceIdx >= 0 ? pSteps[Math.min(raceIdx, pSteps.length - 1)] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={() => {}} onEdgeAction={() => {}} isComplete={pSteps[Math.min(raceIdx, pSteps.length - 1)]?.type === 'COMPLETE'} scenario={scenario} />
+                <GraphCanvas graph={graph} step={raceIdx >= 0 ? pSteps[Math.min(raceIdx, pSteps.length - 1)] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={() => {}} onEdgeAction={() => {}} isComplete={pSteps[Math.min(raceIdx, pSteps.length - 1)]?.type === 'COMPLETE'} scenario={scenario} autoFit={true} />
                 
                 {raceIdx >= 0 && <ExplanationBar currentStep={pSteps[Math.min(raceIdx, pSteps.length - 1)]} stepIndex={Math.min(raceIdx, pSteps.length - 1)} />}
               </div>
@@ -363,6 +363,7 @@ export default function VisualizerPage({ theme, setTheme, cycleTheme }: Props) {
               connectSource={connectSource} onBgClick={handleBgClick} onNodeClick={handleNodeClick}
               onNodeDrag={updateNodePosition} onEdgeAction={handleEdgeAction}
               isComplete={curStep?.type === 'COMPLETE'} scenario={scenario}
+              autoFit={true}
             />
           )}
 
