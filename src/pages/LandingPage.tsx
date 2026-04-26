@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { GitBranch, Activity, History, Globe, TrendingUp, Zap, Package, Keyboard, Wifi, Bolt, MapPin, Server, ArrowRight } from 'lucide-react';
 import type { ThemeName } from '../types';
@@ -9,7 +10,6 @@ import SpotlightCard from '../components/landing/SpotlightCard';
 import CreativeGraphAnimation from '../components/landing/CreativeGraphAnimation';
 
 interface Props {
-  goApp: (sc?: string) => void;
   theme: ThemeName;
   setTheme: (t: ThemeName) => void;
 }
@@ -43,7 +43,9 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
 };
 
-export default function LandingPage({ goApp, theme, setTheme }: Props) {
+export default function LandingPage({ theme, setTheme }: Props) {
+  const navigate = useNavigate();
+  const goApp = (sc?: string) => navigate(sc ? `/app?scenario=${sc}` : '/app');
   const scrollRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ container: scrollRef });
   

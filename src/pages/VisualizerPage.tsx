@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { GitBranch, ArrowLeft, Keyboard, Activity, X, TrendingUp } from 'lucide-react';
 import type { ThemeName, AlgorithmType, Graph, AlgorithmStep } from '../types';
 import { useGraph } from '../hooks/useGraph';
@@ -17,9 +18,13 @@ import ExplanationBar from '../components/visualizer/ExplanationBar';
 import KeyboardModal from '../components/visualizer/KeyboardModal';
 import StatsPanel from '../components/visualizer/StatsPanel';
 
-interface Props { goLanding: () => void; theme: ThemeName; setTheme: (t: ThemeName) => void; cycleTheme: () => void; initialScenario: string; }
+interface Props { theme: ThemeName; setTheme: (t: ThemeName) => void; cycleTheme: () => void; }
 
-export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme, initialScenario }: Props) {
+export default function VisualizerPage({ theme, setTheme, cycleTheme }: Props) {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialScenario = searchParams.get('scenario') || 'telecom';
+  const goLanding = useCallback(() => navigate('/'), [navigate]);
   const { graph, canvasMode, connectSource, setConnectSource, setCanvasMode, setGraph,
     addNode, updateNodePosition, addEdge, deleteNode, deleteEdge, updateEdgeWeight,
     resetGraph, loadGraph, randomGraph, toggleMode, setEdgeCounter } = useGraph();
@@ -252,14 +257,19 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
             <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--text-primary)', letterSpacing: '-0.2px' }}>Route D. Optimal</span>
           </div>
           <div style={{ display: 'flex', gap: 6, marginLeft: 6 }}>
-            {(['kruskal', 'prim'] as const).map(a => (
-              <span key={a} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, padding: '2px 7px', borderRadius: 4, background: 'var(--bg-elevated)',
-                border: `1px solid ${algoType === a ? (a === 'kruskal' ? 'var(--accent-accept)' : 'var(--accent-candidate)') : 'var(--border)'}`,
-                color: algoType === a ? (a === 'kruskal' ? 'var(--accent-accept)' : 'var(--accent-candidate)') : 'var(--text-muted)' }}>
-                {a === 'kruskal' ? 'Kruskal O(E log E)' : 'Prim O(E log V)'}
-              </span>
-            ))}
-            {graph.nodes.length > 0 && <span style={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-secondary)' }}>V={graph.nodes.length} E={graph.edges.length}</span>}
+            {(['kruskal', 'prim'] as const).map(a => {
+              const isActive = algoType === a;
+              const color = a === 'kruskal' ? 'var(--accent-accept)' : 'var(--accent-candidate)';
+              return (
+                <span key={a} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, padding: '2px 7px', borderRadius: 4,
+                  background: isActive ? `color-mix(in srgb, ${color} 20%, var(--bg-elevated))` : 'var(--bg-elevated)',
+                  border: `1px solid ${isActive ? color : 'var(--border)'}`,
+                  color: isActive ? color : 'var(--text-muted)', fontWeight: isActive ? 700 : 500 }}>
+                  {a === 'kruskal' ? "Kruskal's" : "Prim's"}
+                </span>
+              );
+            })}
+            {graph.nodes.length > 0 && <span style={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)' }}>V={graph.nodes.length} E={graph.edges.length}</span>}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
@@ -316,9 +326,9 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
                   </button>
                 </div>
                 
-                {raceHistory === 'prim' && (
+                {raceHistory === 'kruskal' && (
                   <div style={{ position: 'absolute', inset: 0, zIndex: 20, background: 'color-mix(in srgb, var(--bg-canvas) 95%, transparent)', backdropFilter: 'blur(10px)', padding: '60px 20px 20px 20px' }}>
-                    <HistoryPanel steps={pSteps} currentIdx={Math.min(raceIdx, pSteps.length - 1)} onJump={i => setRaceIdx(i)} algoType="prim" scenario={scenario} />
+                    <HistoryPanel steps={kSteps} currentIdx={Math.min(raceIdx, kSteps.length - 1)} onJump={i => setRaceIdx(i)} algoType="kruskal" scenario={scenario} />
                   </div>
                 )}
                 
@@ -336,9 +346,9 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
                   </button>
                 </div>
 
-                {raceHistory === 'kruskal' && (
+                {raceHistory === 'prim' && (
                   <div style={{ position: 'absolute', inset: 0, zIndex: 20, background: 'color-mix(in srgb, var(--bg-canvas) 95%, transparent)', backdropFilter: 'blur(10px)', padding: '60px 20px 20px 20px' }}>
-                    <HistoryPanel steps={kSteps} currentIdx={Math.min(raceIdx, kSteps.length - 1)} onJump={i => setRaceIdx(i)} algoType="kruskal" scenario={scenario} />
+                    <HistoryPanel steps={pSteps} currentIdx={Math.min(raceIdx, pSteps.length - 1)} onJump={i => setRaceIdx(i)} algoType="prim" scenario={scenario} />
                   </div>
                 )}
                 
@@ -406,8 +416,8 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
       </div>
 
       {showStats && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
-          <div style={{ width: 450, background: 'var(--bg-panel)', borderRadius: 16, border: '1px solid var(--border)', boxShadow: '0 20px 40px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+        <div onClick={() => setShowStats(false)} style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: 480, maxWidth: '95vw', background: 'var(--bg-panel)', borderRadius: 16, border: '1px solid var(--border)', boxShadow: '0 20px 40px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: 'var(--text-primary)' }}>
                 <TrendingUp size={16} style={{ color: 'var(--accent-active)' }} /> Network Statistics
@@ -415,7 +425,13 @@ export default function VisualizerPage({ goLanding, theme, setTheme, cycleTheme,
               <button onClick={() => setShowStats(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={16} /></button>
             </div>
             <div style={{ padding: '20px', maxHeight: '70vh', overflowY: 'auto' }}>
-              <StatsPanel graph={graph} steps={steps} currentIdx={stepIdx} algoType={algoType} scenario={scenario} />
+              <StatsPanel graph={graph}
+                steps={(racePlaying || raceIdx !== -1) ? kSteps : steps}
+                currentIdx={(racePlaying || raceIdx !== -1) ? Math.min(raceIdx, kSteps.length - 1) : stepIdx}
+                algoType={algoType} scenario={scenario}
+                raceSteps={(racePlaying || raceIdx !== -1) ? pSteps : undefined}
+                raceIdx={(racePlaying || raceIdx !== -1) ? Math.min(raceIdx, pSteps.length - 1) : undefined}
+              />
             </div>
           </div>
         </div>

@@ -58,6 +58,9 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
     const accentColor = getScenarioAccent(sc);
     const glowColor = getScenarioGlow(sc);
 
+    // O(1) node lookup map — avoids O(V) find() per edge
+    const nodeMap = new Map(graph.nodes.map(n => [n.id, n]));
+
     // ============================================================
     // EDGES
     // ============================================================
@@ -89,18 +92,25 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
       pairIndex[e.id] = pairCursor[key]++;
     });
 
+    // Pre-compute step lookup sets for O(1) membership tests
+    const mstEdgeSet = step ? new Set(step.mstEdges) : null;
+    const rejectedEdgeSet = step ? new Set(step.rejectedEdges) : null;
+    const candidateEdgeSet = step ? new Set(step.candidateEdges) : null;
+    const highlightedEdgeSet = step ? new Set(step.highlightedEdges) : null;
+    const activeNodeSet = step ? new Set(step.activeNodes) : null;
+
     edgeGroups.each(function(d) {
       const grp = d3.select(this);
-      const s = graph.nodes.find(n => n.id === d.source);
-      const t = graph.nodes.find(n => n.id === d.target);
+      const s = nodeMap.get(d.source);
+      const t = nodeMap.get(d.target);
       if (!s || !t) return;
 
       let state = 'default';
       if (step) {
-        if (step.mstEdges.includes(d.id)) state = 'accepted';
-        else if (step.rejectedEdges.includes(d.id)) state = 'rejected';
-        else if (step.candidateEdges.includes(d.id)) state = 'candidate';
-        else if (step.highlightedEdges.includes(d.id)) state = 'considering';
+        if (mstEdgeSet!.has(d.id)) state = 'accepted';
+        else if (rejectedEdgeSet!.has(d.id)) state = 'rejected';
+        else if (candidateEdgeSet!.has(d.id)) state = 'candidate';
+        else if (highlightedEdgeSet!.has(d.id)) state = 'considering';
       }
 
       const stMap: Record<string, [string, number, string, string]> = {
@@ -204,7 +214,7 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
 
     nodeGroups.each(function(d) {
       const grp = d3.select(this);
-      const isActive = step?.activeNodes?.includes(d.id) ?? false;
+      const isActive = activeNodeSet?.has(d.id) ?? false;
       const isSrc = connectSource === d.id;
       const r = getNodeRadius(d.id);
       const fontSize = d.id.length > 4 ? 9 : d.id.length > 2 ? 10 : 12;

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { GitGraph, Keyboard, Columns2, LayoutTemplate, ArrowLeft } from 'lucide-react';
+import { GitGraph, Keyboard, ArrowLeft } from 'lucide-react';
 import type { ThemeName, AlgorithmType } from '../../types';
 import ThemeToggle from './ThemeToggle';
 
@@ -8,8 +8,6 @@ interface HeaderProps {
   theme: ThemeName;
   setSpecificTheme: (t: ThemeName) => void;
   algorithmType?: AlgorithmType;
-  compareMode?: boolean;
-  onToggleCompare?: () => void;
   onShowHelp?: () => void;
   nodeCount?: number;
   edgeCount?: number;
@@ -19,8 +17,6 @@ const Header: React.FC<HeaderProps> = ({
   theme,
   setSpecificTheme,
   algorithmType,
-  compareMode,
-  onToggleCompare,
   onShowHelp,
   nodeCount = 0,
   edgeCount = 0,
@@ -31,60 +27,48 @@ const Header: React.FC<HeaderProps> = ({
 
   return (
     <header
-      className="flex items-center justify-between px-4 py-2 z-30 shrink-0"
       style={{
-        background: 'var(--bg-panel)',
-        borderBottom: '1px solid var(--border)',
-        height: 52,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 16px', height: 48, flexShrink: 0, zIndex: 30,
+        background: 'var(--bg-panel)', borderBottom: '1px solid var(--border)',
       }}
     >
-      <div className="flex items-center gap-3">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         {isVisualizer && (
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-sm transition-colors"
-            style={{ color: 'var(--text-secondary)' }}
-            title="Back to Landing"
-          >
-            <ArrowLeft size={16} />
+          <button onClick={() => navigate('/')} title="Back to Landing"
+            style={{ display: 'flex', alignItems: 'center', padding: '4px 6px', borderRadius: 6, background: 'none', border: '1px solid var(--border)', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+            <ArrowLeft size={14} />
           </button>
         )}
-        <div
-          className="flex items-center gap-2 cursor-pointer"
-          onClick={() => navigate('/')}
-        >
-          <GitGraph size={20} style={{ color: 'var(--accent-accept)' }} />
-          <span className="font-sans font-bold text-base" style={{ color: 'var(--text-primary)' }}>
-            MST Visualizer
-          </span>
+        <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, var(--accent-accept), var(--accent-candidate))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <GitGraph size={14} style={{ color: '#fff' }} />
+          </div>
+          <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>Route D. Optimal</span>
         </div>
 
         {isVisualizer && algorithmType && (
-          <div className="flex items-center gap-3 ml-4">
-            <div className="flex items-center gap-2">
-              <span
-                className="font-mono text-xs px-2 py-0.5 rounded"
-                style={{
-                  background: 'var(--bg-elevated)',
-                  color: algorithmType === 'kruskal' ? 'var(--accent-accept)' : 'var(--text-muted)',
-                  border: algorithmType === 'kruskal' ? '1px solid var(--accent-accept)' : '1px solid var(--border)',
-                }}
-              >
-                Kruskal O(E log E)
-              </span>
-              <span
-                className="font-mono text-xs px-2 py-0.5 rounded"
-                style={{
-                  background: 'var(--bg-elevated)',
-                  color: algorithmType === 'prim' ? 'var(--accent-accept)' : 'var(--text-muted)',
-                  border: algorithmType === 'prim' ? '1px solid var(--accent-accept)' : '1px solid var(--border)',
-                }}
-              >
-                Prim O(E log V)
-              </span>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8 }}>
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace", fontSize: 10, padding: '3px 8px', borderRadius: 6,
+              background: algorithmType === 'kruskal' ? 'color-mix(in srgb, var(--accent-accept) 15%, transparent)' : 'var(--bg-elevated)',
+              color: algorithmType === 'kruskal' ? 'var(--accent-accept)' : 'var(--text-muted)',
+              border: `1px solid ${algorithmType === 'kruskal' ? 'var(--accent-accept)' : 'var(--border)'}`,
+              fontWeight: 600,
+            }}>
+              Kruskal's
+            </span>
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace", fontSize: 10, padding: '3px 8px', borderRadius: 6,
+              background: algorithmType === 'prim' ? 'color-mix(in srgb, var(--accent-candidate) 15%, transparent)' : 'var(--bg-elevated)',
+              color: algorithmType === 'prim' ? 'var(--accent-candidate)' : 'var(--text-muted)',
+              border: `1px solid ${algorithmType === 'prim' ? 'var(--accent-candidate)' : 'var(--border)'}`,
+              fontWeight: 600,
+            }}>
+              Prim's
+            </span>
             {nodeCount > 0 && (
-              <span className="font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-muted)' }}>
                 V={nodeCount} E={edgeCount}
               </span>
             )}
@@ -92,51 +76,18 @@ const Header: React.FC<HeaderProps> = ({
         )}
       </div>
 
-      <div className="flex items-center gap-2">
-        {isVisualizer && onToggleCompare && (
-          <button
-            onClick={onToggleCompare}
-            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-mono transition-all"
-            style={{
-              background: compareMode ? 'var(--accent-active)' : 'var(--bg-elevated)',
-              color: compareMode ? '#000' : 'var(--text-secondary)',
-              border: '1px solid var(--border)',
-            }}
-            title="Toggle Compare Mode [C]"
-          >
-            {compareMode ? <Columns2 size={14} /> : <LayoutTemplate size={14} />}
-            {compareMode ? 'Comparing' : 'Compare'}
-          </button>
-        )}
-
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <ThemeToggle theme={theme} setTheme={setSpecificTheme} />
-
         {isVisualizer && onShowHelp && (
-          <button
-            onClick={onShowHelp}
-            className="rounded-md p-1.5 transition-colors"
-            style={{
-              color: 'var(--text-secondary)',
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border)',
-            }}
-            title="Keyboard Shortcuts [?]"
-          >
-            <Keyboard size={16} />
+          <button onClick={onShowHelp} title="Keyboard Shortcuts [?]"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+            <Keyboard size={14} />
           </button>
         )}
-
         {!isVisualizer && (
-          <button
-            onClick={() => navigate('/app')}
-            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all"
-            style={{
-              background: 'var(--accent-accept)',
-              color: '#fff',
-            }}
-          >
-            <GitGraph size={16} />
-            Open Visualizer
+          <button onClick={() => navigate('/app')}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 10, border: 'none', background: 'var(--text-primary)', color: 'var(--bg-base)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+            <GitGraph size={14} /> Launch App
           </button>
         )}
       </div>
