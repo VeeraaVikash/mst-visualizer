@@ -17,6 +17,34 @@ interface Props {
   scenario?: string;
 }
 
+// --- Node radius calculation based on label length ---
+function getNodeRadius(label: string): number {
+  const base = 22;
+  const extra = Math.max(0, label.length - 2) * 4;
+  return Math.min(base + extra, 42);
+}
+
+// --- Scenario-specific accent color for node borders ---
+function getScenarioAccent(scenario: string): string {
+  switch (scenario) {
+    case 'telecom': return 'rgba(72, 187, 120, 0.5)';
+    case 'power': return 'rgba(246, 173, 85, 0.5)';
+    case 'roads': return 'rgba(99, 179, 237, 0.5)';
+    case 'datacenter': return 'rgba(252, 129, 129, 0.5)';
+    default: return 'rgba(72, 187, 120, 0.5)';
+  }
+}
+
+function getScenarioGlow(scenario: string): string {
+  switch (scenario) {
+    case 'telecom': return 'rgba(72, 187, 120, 0.15)';
+    case 'power': return 'rgba(246, 173, 85, 0.15)';
+    case 'roads': return 'rgba(99, 179, 237, 0.15)';
+    case 'datacenter': return 'rgba(252, 129, 129, 0.15)';
+    default: return 'rgba(72, 187, 120, 0.15)';
+  }
+}
+
 export default function GraphCanvas({ graph, step, canvasMode, deleteMode, connectSource, onBgClick, onNodeClick, onNodeDrag, onEdgeAction, isComplete, scenario }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const mainGRef = useRef<SVGGElement>(null);
@@ -26,8 +54,13 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
   const render = useCallback(() => {
     if (!svgRef.current || !mainGRef.current) return;
     const g = d3.select(mainGRef.current);
+    const sc = scenario || 'telecom';
+    const accentColor = getScenarioAccent(sc);
+    const glowColor = getScenarioGlow(sc);
 
+    // ============================================================
     // EDGES
+    // ============================================================
     const edgeGroups = g.selectAll<SVGGElement, GEdge>('.gf-edge')
       .data(graph.edges, d => d.id)
       .join(
@@ -42,14 +75,13 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
         exit => exit.remove()
       );
 
-    // Build a map to detect parallel edges (multiple edges between same node pair)
+    // Detect parallel edges
     const pairCount: Record<string, number> = {};
     const pairIndex: Record<string, number> = {};
     graph.edges.forEach(e => {
       const key = [e.source, e.target].sort().join('::');
       pairCount[key] = (pairCount[key] || 0) + 1;
     });
-    // Assign index within each pair group
     const pairCursor: Record<string, number> = {};
     graph.edges.forEach(e => {
       const key = [e.source, e.target].sort().join('::');
@@ -72,17 +104,30 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
       }
 
       const stMap: Record<string, [string, number, string, string]> = {
-        default: ['var(--accent-default)', 2, 'none', 'none'],
-        considering: ['var(--accent-active)', 3, 'drop-shadow(0 0 8px var(--accent-active))', 'none'],
-        accepted: ['var(--accent-accept)', 3.5, `drop-shadow(0 0 ${isComplete ? 16 : 10}px var(--glow-accept))`, 'none'],
-        rejected: ['var(--accent-reject)', 2, 'drop-shadow(0 0 4px var(--accent-reject))', 'none'],
-        candidate: ['var(--accent-candidate)', 2, 'none', '8 4'],
+        default: ['var(--accent-default)', 1.5, 'none', 'none'],
+        considering: ['var(--accent-active)', 2.5, 'drop-shadow(0 0 6px var(--accent-active))', 'none'],
+        accepted: ['var(--accent-accept)', 3, `drop-shadow(0 0 ${isComplete ? 14 : 8}px var(--glow-accept))`, 'none'],
+        rejected: ['var(--accent-reject)', 1.5, 'drop-shadow(0 0 3px var(--accent-reject))', 'none'],
+        candidate: ['var(--accent-candidate)', 1.5, 'none', '6 4'],
       };
       const [stroke, sw, flt, da] = stMap[state] ?? stMap.default;
 
       const path = grp.select<SVGPathElement>('.gf-eline');
 
-      // Determine if this edge needs curvature (only for parallel edges)
+      // Shorten edges so they don't enter node circles
+      const sR = getNodeRadius(s.id);
+      const tR = getNodeRadius(t.id);
+      const dx = t.x - s.x;
+      const dy = t.y - s.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const ux = dx / dist;
+      const uy = dy / dist;
+      const sx = s.x + ux * sR;
+      const sy = s.y + uy * sR;
+      const tx = t.x - ux * tR;
+      const ty = t.y - uy * tR;
+
+      // Parallel edge curvature
       const pairKey = [d.source, d.target].sort().join('::');
       const count = pairCount[pairKey] || 1;
       const idx = pairIndex[d.id] || 0;
@@ -90,39 +135,36 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
       let labelX: number, labelY: number;
 
       if (count > 1) {
-        // Parallel edges: offset each one with a curve
-        const dx = t.x - s.x;
-        const dy = t.y - s.y;
         const offset = (idx - (count - 1) / 2) * 0.2;
-        const midX = (s.x + t.x) / 2 - dy * offset;
-        const midY = (s.y + t.y) / 2 + dx * offset;
-        path.attr('d', `M${s.x},${s.y} Q${midX},${midY} ${t.x},${t.y}`);
-        labelX = 0.25 * s.x + 0.5 * midX + 0.25 * t.x;
-        labelY = 0.25 * s.y + 0.5 * midY + 0.25 * t.y;
+        const midX = (sx + tx) / 2 - (ty - sy) * offset;
+        const midY = (sy + ty) / 2 + (tx - sx) * offset;
+        path.attr('d', `M${sx},${sy} Q${midX},${midY} ${tx},${ty}`);
+        labelX = 0.25 * sx + 0.5 * midX + 0.25 * tx;
+        labelY = 0.25 * sy + 0.5 * midY + 0.25 * ty;
       } else {
-        // Single edge: clean straight line
-        path.attr('d', `M${s.x},${s.y} L${t.x},${t.y}`);
-        labelX = (s.x + t.x) / 2;
-        labelY = (s.y + t.y) / 2;
+        path.attr('d', `M${sx},${sy} L${tx},${ty}`);
+        labelX = (sx + tx) / 2;
+        labelY = (sy + ty) / 2;
       }
 
-      path.transition().duration(280)
+      path.transition().duration(250)
         .attr('stroke', stroke).attr('stroke-width', sw)
-        .attr('filter', flt).attr('stroke-dasharray', da);
+        .attr('filter', flt).attr('stroke-dasharray', da)
+        .attr('stroke-linecap', 'round');
 
       if (state === 'candidate' || state === 'accepted') path.classed('edge-animated', true);
       else path.classed('edge-animated', false);
 
-      // Weight badge at edge midpoint
+      // Weight badge
       const tw = String(d.weight).length * 7 + 12;
-
       grp.select('.gf-ebg')
-        .attr('x', labelX - tw / 2).attr('y', labelY - 10).attr('width', tw).attr('height', 18)
-        .attr('rx', 4).attr('fill', 'var(--bg-panel)').attr('stroke', 'var(--border)').attr('stroke-width', 1)
+        .attr('x', labelX - tw / 2).attr('y', labelY - 9).attr('width', tw).attr('height', 18)
+        .attr('rx', 4).attr('fill', 'var(--bg-panel)').attr('stroke', 'var(--border)').attr('stroke-width', 0.5)
+        .attr('opacity', 0.9)
         .style('cursor', deleteMode ? 'crosshair' : 'pointer');
       grp.select('.gf-ewt')
-        .attr('x', labelX).attr('y', labelY + 3).attr('text-anchor', 'middle')
-        .attr('font-family', 'JetBrains Mono').attr('font-size', 10)
+        .attr('x', labelX).attr('y', labelY + 4).attr('text-anchor', 'middle')
+        .attr('font-family', "'JetBrains Mono', monospace").attr('font-size', 10).attr('font-weight', 600)
         .attr('fill', state !== 'default' ? stroke : 'var(--text-secondary)')
         .attr('pointer-events', 'none')
         .text(d.weight);
@@ -132,21 +174,28 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
         .on('dblclick', (ev: Event) => { ev.stopPropagation(); if (!deleteMode) onEdgeAction(d, 'edit'); });
     });
 
-    // NODES
+    // ============================================================
+    // NODES — Pure SVG (circle + text), no foreignObject
+    // ============================================================
     const nodeGroups = g.selectAll<SVGGElement, GNode>('.gf-node')
       .data(graph.nodes, d => d.id)
       .join(
         enter => {
-          const grp = enter.append('g').attr('class', 'gf-node');
-          grp.append('foreignObject')
-            .attr('class', 'gf-nfo')
-            .attr('width', 100).attr('height', 100)
-            .attr('x', -50).attr('y', -50)
-            .style('overflow', 'visible')
-            .style('pointer-events', 'none')
-            .append('xhtml:div').attr('class', 'gf-ndiv')
-            .style('width', '100%').style('height', '100%')
-            .style('position', 'relative');
+          const grp = enter.append('g').attr('class', 'gf-node').style('cursor', 'pointer');
+          // Outer glow circle (for active/accepted state)
+          grp.append('circle').attr('class', 'gf-nglow')
+            .attr('r', 0).attr('fill', 'none')
+            .attr('stroke', 'none').attr('stroke-width', 0)
+            .style('pointer-events', 'none');
+          // Main circle
+          grp.append('circle').attr('class', 'gf-ncircle');
+          // Label text
+          grp.append('text').attr('class', 'gf-nlabel')
+            .attr('text-anchor', 'middle')
+            .attr('dominant-baseline', 'central')
+            .attr('font-family', "'JetBrains Mono', monospace")
+            .attr('font-weight', 700)
+            .attr('pointer-events', 'none');
           return grp;
         },
         update => update,
@@ -157,33 +206,73 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
       const grp = d3.select(this);
       const isActive = step?.activeNodes?.includes(d.id) ?? false;
       const isSrc = connectSource === d.id;
-
-      let classes = `node-modern ${scenario || 'telecom'}`;
-      if (deleteMode) classes += ' delete';
-      else if (isSrc) classes += ' source';
-      else if (isActive) classes += ' active';
-      
-      // Keep pulsing logic via css or simple style
-      if (isActive && !isComplete) classes += ' pulse';
+      const r = getNodeRadius(d.id);
+      const fontSize = d.id.length > 4 ? 9 : d.id.length > 2 ? 10 : 12;
 
       grp.attr('transform', `translate(${d.x},${d.y})`);
-      
-      // Use foreignObject div for HTML styling
-      const div = grp.select('.gf-ndiv');
-      div.html(`
-        <div class="${classes}">
-          <span class="n-label">${d.id}</span>
-        </div>
-      `);
 
-      // Add invisible hit circle for precise d3 dragging and clicking over the fo
-      let hit = grp.select<SVGCircleElement>('.gf-nhit');
-      if (hit.empty()) {
-        hit = grp.append('circle').attr('class', 'gf-nhit').attr('r', 25).attr('fill', 'transparent')
-          .style('cursor', 'pointer');
+      // Determine node visual state
+      let fillColor = 'var(--bg-elevated)';
+      let strokeColor = accentColor;
+      let strokeW = 1.5;
+      let glowR = 0;
+      let glowStroke = 'none';
+      let glowOpacity = 0;
+
+      if (deleteMode) {
+        strokeColor = 'var(--accent-reject)';
+        strokeW = 2;
+        grp.style('cursor', 'crosshair');
+      } else if (isSrc) {
+        strokeColor = 'var(--accent-active)';
+        strokeW = 2.5;
+        glowR = r + 6;
+        glowStroke = 'var(--accent-active)';
+        glowOpacity = 0.4;
+        grp.style('cursor', 'cell');
+      } else if (isActive) {
+        fillColor = glowColor;
+        strokeColor = 'var(--accent-accept)';
+        strokeW = 2.5;
+        glowR = r + 8;
+        glowStroke = 'var(--accent-accept)';
+        glowOpacity = isComplete ? 0.6 : 0.3;
+        grp.style('cursor', 'pointer');
+      } else {
+        grp.style('cursor', deleteMode ? 'crosshair' : connectSource ? 'cell' : 'pointer');
       }
-      hit.style('cursor', deleteMode ? 'crosshair' : connectSource ? 'cell' : 'pointer')
-        .on('click', (ev: Event) => { ev.stopPropagation(); onNodeClick(d.id); });
+
+      // Main circle
+      grp.select('.gf-ncircle')
+        .attr('r', r)
+        .attr('fill', fillColor)
+        .attr('stroke', strokeColor)
+        .attr('stroke-width', strokeW);
+
+      // Glow circle
+      const glow = grp.select('.gf-nglow');
+      glow
+        .attr('r', glowR)
+        .attr('stroke', glowStroke)
+        .attr('stroke-width', glowR > 0 ? 1.5 : 0)
+        .attr('opacity', glowOpacity)
+        .attr('fill', 'none');
+
+      // Pulse animation class
+      if (isActive && !isComplete) {
+        glow.classed('pulse', true);
+      } else {
+        glow.classed('pulse', false);
+      }
+
+      // Label
+      grp.select('.gf-nlabel')
+        .attr('font-size', fontSize)
+        .attr('fill', 'var(--text-primary)')
+        .text(d.id);
+
+      // Click handler
+      grp.on('click', (ev: Event) => { ev.stopPropagation(); onNodeClick(d.id); });
     });
 
     // Drag (select mode only)
@@ -240,8 +329,9 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
     if (!zoomBehavior.current || !svgRef.current || !containerRef.current || !graph.nodes.length) return;
     const r = containerRef.current.getBoundingClientRect();
     const xs = graph.nodes.map(n => n.x), ys = graph.nodes.map(n => n.y);
-    const x0 = Math.min(...xs) - 60, x1 = Math.max(...xs) + 60;
-    const y0 = Math.min(...ys) - 60, y1 = Math.max(...ys) + 60;
+    const maxR = Math.max(...graph.nodes.map(n => getNodeRadius(n.id)));
+    const x0 = Math.min(...xs) - maxR - 40, x1 = Math.max(...xs) + maxR + 40;
+    const y0 = Math.min(...ys) - maxR - 40, y1 = Math.max(...ys) + maxR + 40;
     const sc = Math.min(r.width / (x1 - x0), r.height / (y1 - y0), 2) * 0.85;
     const tx = r.width / 2 - sc * (x0 + x1) / 2, ty = r.height / 2 - sc * (y0 + y1) / 2;
     d3.select(svgRef.current).transition().duration(400)
@@ -260,6 +350,16 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
   return (
     <div ref={containerRef} className="dot-grid" style={{ width: '100%', height: '100%', position: 'relative' }}>
       <svg ref={svgRef} style={{ width: '100%', height: '100%' }}>
+        <defs>
+          {/* Glow filter for accepted edges */}
+          <filter id="glow-accept" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
         <rect className="gf-bg" width="100%" height="100%" fill="transparent" />
         <g ref={mainGRef} />
       </svg>

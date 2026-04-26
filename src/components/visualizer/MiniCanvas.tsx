@@ -41,12 +41,14 @@ export default function MiniCanvas({ graph, step, isComplete, label, color }: Pr
     for (const n of graph.nodes) {
       const nx = mx(n.x), ny = my(n.y);
       const act = step?.activeNodes?.includes(n.id) ?? false;
-      svg.append('circle').attr('cx', nx).attr('cy', ny).attr('r', 11)
+      const r = Math.min(11 + Math.max(0, n.id.length - 2) * 2, 18);
+      const fs = n.id.length > 4 ? 6 : n.id.length > 2 ? 7 : 8;
+      svg.append('circle').attr('cx', nx).attr('cy', ny).attr('r', r)
         .attr('fill', 'var(--bg-elevated)').attr('stroke', act ? color : 'var(--accent-default)')
         .attr('stroke-width', act ? 2 : 1.5)
         .attr('filter', act && isComplete ? `drop-shadow(0 0 8px ${color})` : 'none');
-      svg.append('text').attr('x', nx).attr('y', ny).attr('text-anchor', 'middle').attr('dominant-baseline', 'middle')
-        .attr('font-family', 'JetBrains Mono').attr('font-size', n.id.length > 2 ? 6 : 8).attr('font-weight', 600)
+      svg.append('text').attr('x', nx).attr('y', ny).attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
+        .attr('font-family', "'JetBrains Mono', monospace").attr('font-size', fs).attr('font-weight', 600)
         .attr('fill', 'var(--text-primary)').text(n.id);
     }
 

@@ -96,15 +96,16 @@ function renderHalf(
       .text(edge.weight);
   }
 
-  // Nodes
   for (const node of graph.nodes) {
     const nx = mapX(node.x);
     const ny = mapY(node.y);
     const isActive = step?.activeNodes.includes(node.id);
+    const r = Math.min(16 + Math.max(0, node.id.length - 2) * 3, 28);
+    const fs = node.id.length > 4 ? 7 : node.id.length > 2 ? 8 : 10;
 
     svg.append('circle')
       .attr('cx', nx).attr('cy', ny)
-      .attr('r', 16)
+      .attr('r', r)
       .attr('fill', 'var(--bg-elevated)')
       .attr('stroke', isActive ? 'var(--accent-accept)' : 'var(--accent-default)')
       .attr('stroke-width', isActive ? 2 : 1.5)
@@ -113,9 +114,9 @@ function renderHalf(
     svg.append('text')
       .attr('x', nx).attr('y', ny)
       .attr('text-anchor', 'middle')
-      .attr('dominant-baseline', 'middle')
-      .attr('font-family', 'JetBrains Mono')
-      .attr('font-size', 10)
+      .attr('dominant-baseline', 'central')
+      .attr('font-family', "'JetBrains Mono', monospace")
+      .attr('font-size', fs)
       .attr('font-weight', 600)
       .attr('fill', 'var(--text-primary)')
       .text(node.id);

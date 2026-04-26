@@ -9,48 +9,17 @@ body { font-family: 'Space Grotesk', sans-serif; background: var(--bg-base); col
 .kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; padding: 2px 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 4px; box-shadow: 0 2px 0 var(--border); color: var(--text-secondary); line-height: 1.5; }
 @keyframes edge-dash { to { stroke-dashoffset: -20; } }
 .edge-animated { stroke-dasharray: 8 4; animation: edge-dash 0.8s linear infinite; }
-@keyframes pulse-glow { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
-.pulse { animation: pulse-glow 1.5s ease-in-out infinite; }
+@keyframes pulse-glow { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.8; } }
+.pulse { animation: pulse-glow 1.8s ease-in-out infinite; }
 button { cursor: pointer; font-family: 'Space Grotesk', sans-serif; }
 select, input { font-family: 'JetBrains Mono', monospace; }
 input[type=range] { accent-color: var(--accent-active); cursor: pointer; }
 
-/* Modern Node UIs */
-.node-modern {
-  width: 50px; height: 50px;
-  border-radius: 12px;
-  background: rgba(20, 24, 39, 0.65);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  color: var(--text-primary);
-}
+/* SVG Graph Nodes */
+.gf-node { transition: transform 0.15s ease-out; }
+.gf-ncircle { transition: fill 0.2s, stroke 0.2s, stroke-width 0.2s; }
+.gf-nlabel { user-select: none; }
+.gf-nglow { transition: opacity 0.3s, r 0.3s; }
 
-.node-modern.telecom { border-radius: 50%; border: 1px solid rgba(72, 187, 120, 0.4); box-shadow: inset 0 0 10px rgba(72, 187, 120, 0.1); }
-.node-modern.power { border-radius: 4px; border: 1px solid rgba(246, 173, 85, 0.4); transform: translate(-50%, -50%) rotate(45deg); }
-.node-modern.power .n-label { transform: rotate(-45deg); }
-.node-modern.roads { border-radius: 14px; border: 1px solid rgba(99, 179, 237, 0.4); }
-.node-modern.datacenter { border-radius: 6px; width: 44px; height: 56px; border: 1px solid rgba(252, 129, 129, 0.4); justify-content: flex-start; padding-top: 6px; }
-.node-modern.datacenter::after { content: ''; width: 20px; height: 2px; background: rgba(255,255,255,0.2); margin-top: 6px; box-shadow: 0 6px 0 rgba(255,255,255,0.2), 0 12px 0 rgba(255,255,255,0.2); }
-
-.node-modern.active {
-  transform: translate(-50%, -50%) scale(1.15);
-  border-color: var(--accent-accept);
-  background: rgba(40, 190, 110, 0.15);
-  box-shadow: 0 0 15px var(--glow-accept), inset 0 0 15px rgba(40, 190, 110, 0.2);
-}
-.node-modern.power.active { transform: translate(-50%, -50%) scale(1.15) rotate(45deg); }
-
-.node-modern.source { border-color: var(--accent-active); box-shadow: 0 0 15px var(--glow-active); }
-.node-modern.delete { border-color: var(--accent-reject); box-shadow: 0 0 15px var(--accent-reject); }
-
-.n-label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  font-weight: 700;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-  pointer-events: none;
-}
+/* SVG Graph Edges */
+.gf-eline { transition: stroke 0.25s, stroke-width 0.25s; }

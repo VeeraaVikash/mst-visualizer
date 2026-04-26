@@ -85,14 +85,22 @@ export class LayoutManager {
       },
     });
 
+    // --- Set node sizes based on label length (for noverlap awareness) ---
+    g.forEachNode((key) => {
+      const baseR = 22;
+      const extra = Math.max(0, key.length - 2) * 4;
+      const r = Math.min(baseR + extra, 42);
+      g.setNodeAttribute(key, 'size', r);
+    });
+
     // --- Run Noverlap to remove any remaining overlaps ---
     noverlap.assign(g, {
-      maxIterations: 100,
+      maxIterations: 150,
       settings: {
-        margin: Math.max(40, 120 / Math.sqrt(V)), // adaptive margin
-        ratio: 1.2,
-        speed: 3,
-        gridSize: Math.max(5, Math.ceil(Math.sqrt(V))),
+        margin: Math.max(50, 150 / Math.sqrt(V)), // generous margin for clean spacing
+        ratio: 1.5,
+        speed: 2,
+        gridSize: Math.max(8, Math.ceil(Math.sqrt(V) * 1.5)),
       },
     });
 
