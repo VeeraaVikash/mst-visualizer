@@ -55,6 +55,7 @@ export default function LandingPage({ theme, setTheme }: Props) {
   return (
     <div 
       ref={scrollRef} 
+      onCopy={(e) => e.preventDefault()}
       style={{ 
         height: '100vh', 
         overflowY: 'auto', 
@@ -62,6 +63,9 @@ export default function LandingPage({ theme, setTheme }: Props) {
         background: 'var(--bg-base)',
         position: 'relative',
         scrollBehavior: 'smooth',
+        WebkitUserSelect: 'none',
+        MozUserSelect: 'none',
+        msUserSelect: 'none',
         userSelect: 'none'
       }}
     >

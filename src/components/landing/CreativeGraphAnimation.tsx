@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getConstellationGraph } from '../../data/constellations';
+import { getConstellationGraph, CONSTELLATIONS } from '../../data/constellations';
 
 const CreativeGraphAnimation: React.FC = () => {
   const [constellationIdx, setConstellationIdx] = useState(0);
@@ -15,7 +15,7 @@ const CreativeGraphAnimation: React.FC = () => {
     const interval = setInterval(() => {
       currentStep++;
       if (currentStep > totalSteps + 2) {
-        setConstellationIdx(c => (c + 1) % 5);
+        setConstellationIdx(c => (c + 1) % CONSTELLATIONS.length);
         currentStep = -1;
       }
       setStep(currentStep);
@@ -37,7 +37,7 @@ const CreativeGraphAnimation: React.FC = () => {
           transition={{ duration: 0.8, ease: 'easeInOut' }}
         >
           <defs>
-            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
               <feGaussianBlur stdDeviation="6" result="blur" />
               <feComposite in="SourceGraphic" in2="blur" operator="over" />
             </filter>
@@ -108,7 +108,7 @@ const CreativeGraphAnimation: React.FC = () => {
                   fontWeight="bold"
                   fontFamily="'Space Grotesk', sans-serif"
                 >
-                  {node.id.substring(0, 4).toUpperCase()}
+                  {node.id.toUpperCase()}
                 </text>
               </g>
             );
