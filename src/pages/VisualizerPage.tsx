@@ -326,15 +326,15 @@ export default function VisualizerPage({ theme, setTheme, cycleTheme }: Props) {
                   </button>
                 </div>
                 
-                {raceHistory === 'kruskal' && (
+                {raceHistory === 'prim' && (
                   <div style={{ position: 'absolute', inset: 0, zIndex: 20, background: 'color-mix(in srgb, var(--bg-canvas) 95%, transparent)', backdropFilter: 'blur(10px)', padding: '60px 20px 20px 20px' }}>
-                    <HistoryPanel steps={kSteps} currentIdx={Math.min(raceIdx, kSteps.length - 1)} onJump={i => setRaceIdx(i)} algoType="kruskal" scenario={scenario} />
+                    <HistoryPanel steps={pSteps} currentIdx={Math.min(raceIdx, pSteps.length - 1)} onJump={i => setRaceIdx(i)} algoType="prim" scenario={scenario} />
                   </div>
                 )}
                 
-                <GraphCanvas graph={graph} step={raceIdx >= 0 ? kSteps[Math.min(raceIdx, kSteps.length - 1)] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={() => {}} onEdgeAction={() => {}} isComplete={kSteps[Math.min(raceIdx, kSteps.length - 1)]?.type === 'COMPLETE'} scenario={scenario} autoFit={true} />
+                <GraphCanvas graph={graph} step={raceIdx >= 0 ? kSteps[Math.min(raceIdx, kSteps.length - 1)] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={updateNodePosition} onEdgeAction={() => {}} isComplete={kSteps[Math.min(raceIdx, kSteps.length - 1)]?.type === 'COMPLETE'} scenario={scenario} autoFit={true} />
                 
-                {raceIdx >= 0 && <ExplanationBar currentStep={kSteps[Math.min(raceIdx, kSteps.length - 1)]} stepIndex={Math.min(raceIdx, kSteps.length - 1)} />}
+                {raceIdx >= 0 && raceHistory !== 'prim' && <ExplanationBar currentStep={kSteps[Math.min(raceIdx, kSteps.length - 1)]} stepIndex={Math.min(raceIdx, kSteps.length - 1)} />}
               </div>
               <div style={{ flex: 1, position: 'relative' }}>
                 <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 30, display: 'flex', gap: 8 }}>
@@ -346,15 +346,15 @@ export default function VisualizerPage({ theme, setTheme, cycleTheme }: Props) {
                   </button>
                 </div>
 
-                {raceHistory === 'prim' && (
+                {raceHistory === 'kruskal' && (
                   <div style={{ position: 'absolute', inset: 0, zIndex: 20, background: 'color-mix(in srgb, var(--bg-canvas) 95%, transparent)', backdropFilter: 'blur(10px)', padding: '60px 20px 20px 20px' }}>
-                    <HistoryPanel steps={pSteps} currentIdx={Math.min(raceIdx, pSteps.length - 1)} onJump={i => setRaceIdx(i)} algoType="prim" scenario={scenario} />
+                    <HistoryPanel steps={kSteps} currentIdx={Math.min(raceIdx, kSteps.length - 1)} onJump={i => setRaceIdx(i)} algoType="kruskal" scenario={scenario} />
                   </div>
                 )}
                 
-                <GraphCanvas graph={graph} step={raceIdx >= 0 ? pSteps[Math.min(raceIdx, pSteps.length - 1)] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={() => {}} onEdgeAction={() => {}} isComplete={pSteps[Math.min(raceIdx, pSteps.length - 1)]?.type === 'COMPLETE'} scenario={scenario} autoFit={true} />
+                <GraphCanvas graph={graph} step={raceIdx >= 0 ? pSteps[Math.min(raceIdx, pSteps.length - 1)] : null} canvasMode="select" deleteMode={false} connectSource={null} onBgClick={() => {}} onNodeClick={() => {}} onNodeDrag={updateNodePosition} onEdgeAction={() => {}} isComplete={pSteps[Math.min(raceIdx, pSteps.length - 1)]?.type === 'COMPLETE'} scenario={scenario} autoFit={true} />
                 
-                {raceIdx >= 0 && <ExplanationBar currentStep={pSteps[Math.min(raceIdx, pSteps.length - 1)]} stepIndex={Math.min(raceIdx, pSteps.length - 1)} />}
+                {raceIdx >= 0 && raceHistory !== 'kruskal' && <ExplanationBar currentStep={pSteps[Math.min(raceIdx, pSteps.length - 1)]} stepIndex={Math.min(raceIdx, pSteps.length - 1)} />}
               </div>
             </div>
           ) : (

@@ -448,7 +448,8 @@ export default function GraphCanvas({ graph, step, canvasMode, deleteMode, conne
       hasFitted.current = true;
       return () => clearTimeout(timer);
     }
-  }, [autoFit, graph.nodes.length, fitView]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFit, graph.nodes.length]);
 
   const zoomBy = useCallback((factor: number) => {
     if (!zoomBehavior.current || !svgRef.current) return;
